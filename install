@@ -148,24 +148,24 @@ ghInstall fzf junegunn $fzf_version/fzf-$fzf_version-linux_amd64.tar.gz
 # Install gum
 ghInstall gum charmbracelet v$gum_version/gum_${gum_version}_linux_x86_64.tar.gz
 
-# wget -q --show-progress --progress=bar:force -O "$bin_path/dayz-ctl" \
-#   $raw_url/$DAYZ_CTL_VERSION/dayz-ctl ||
-#   fail "Can't download dayz-ctl from https://github.com/WoozyMasta/dayz-ctl"
-# chmod +x "$bin_path/dayz-ctl"
+wget -q --show-progress --progress=bar:force -O "$bin_path/dayz-ctl" \
+  $raw_url/$DAYZ_CTL_VERSION/dayz-ctl ||
+  fail "Can't download dayz-ctl from https://github.com/WoozyMasta/dayz-ctl"
+chmod +x "$bin_path/dayz-ctl"
 
-# if ! command -v dayz-ctl &>/dev/null; then
-#   [ -f "$bin_path/dayz-ctl" ] &&
-#     $package_su ln -s "$bin_path/dayz-ctl" /usr/bin/dayz-ctl
-# fi
+if ! command -v dayz-ctl &>/dev/null; then
+  [ -f "$bin_path/dayz-ctl" ] &&
+    $package_su ln -s "$bin_path/dayz-ctl" /usr/bin/dayz-ctl
+fi
 
 if [ -d "$USER_APPLICATIONS_DIR" ]; then
   [ -d "$USER_ICONS_DIR" ] &&
     icon_path="$USER_ICONS_DIR/dayz-ctl.svg" && icon=dayz-ctl
 
-  # wget -q --show-progress --progress=bar:force \
-  #   -O "${icon_path:-$bin_path/dayz-ctl.svg}" \
-  #   raw_url/$DAYZ_CTL_VERSION/extra/dayz-ctl.svg ||
-  #   fail "Can't download dayz-ctl from https://github.com/WoozyMasta/dayz-ctl"
+  wget -q --show-progress --progress=bar:force \
+    -O "${icon_path:-$bin_path/dayz-ctl.svg}" \
+    raw_url/$DAYZ_CTL_VERSION/extra/dayz-ctl.svg ||
+    fail "Can't download dayz-ctl from https://github.com/WoozyMasta/dayz-ctl"
 
   printf '%s\n' \
     '[Desktop Entry]' \
@@ -187,3 +187,5 @@ fi
 
 echo "$i ${installed_packages[*]}"
 echo Done
+
+exec "$bin_path/dayz-ctl"
