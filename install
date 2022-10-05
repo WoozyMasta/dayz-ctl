@@ -165,7 +165,7 @@ if [ -d "$USER_APPLICATIONS_DIR" ]; then
 
   wget -q --show-progress --progress=bar:force \
     -O "${icon_path:-$bin_path/dayz-ctl.svg}" \
-    raw_url/$DAYZ_CTL_VERSION/extra/dayz-ctl.svg ||
+    $raw_url/$DAYZ_CTL_VERSION/extra/dayz-ctl.svg ||
     fail "Can't download dayz-ctl from https://github.com/WoozyMasta/dayz-ctl"
 
   printf '%s\n' \
