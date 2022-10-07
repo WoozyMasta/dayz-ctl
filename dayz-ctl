@@ -479,14 +479,11 @@ getNotInstalledMods() {
     done
 
     printf '\n%s\n' "You need to install these mods in order to play."
-    printf '_%s %s_\n' \
-      "Let the launcher do it by itself or follow all links and subscribe" \
-      "to each mod, then wait for all mods to install and reconnect"
   } | gum format
 
   # Helper for install mods without StemCMD
   if [ ! $DAYZ_STEAMCMD_ENABLED = true ] && [ "${#missed_mods[@]}" -gt 0 ]; then
-    if gum confirm --prompt.align=center \
+    if command -v xdg-open &>/dev/null && gum confirm --prompt.align=center \
        'Open all Steam Workshop links for missing mods for you?'
     then
       for id in "${missed_mods[@]}"; do
@@ -542,13 +539,13 @@ getNotInstalledMods() {
 
 # Download or update mod from workshop with SteamCMD
 workshopDownload() {
-  local id="$1" name="$2" action
+  local id="$1" name="$2" action="${3:-Update}"
   # Fail if account anonymous
   [ "${steam_login:-anonymous}" = anonymous ] &&
     fail "Can't $action mods with \"anonymous\" Steam account"
   # Install mod with SteamCMD
   [ ! -d "$dayz_workshop_path/$id" ] && action=Install
-  gum spin --title "${action:-Update} \"$name\" mod..." -- \
+  gum spin --title "$action \"$name\" mod..." -- \
     steamcmd +@ShutdownOnFailedCommand 1 +login "$steam_login" \
       +workshop_download_item "$DAYZ_GAME_ID" "$id" validate +quit ||
     fail "ReLogin in Steam please:" "steamcmd +login $steam_login +quit"
@@ -829,28 +826,41 @@ updateDayZOffline() {
   local project="${repo##*/}" tag=0 version=0 release_url
 
   [ -f "$version_file" ] && version=$(<"$version_file")
-
   release_url="$(
     curl -fs -o/dev/null -w '%{redirect_url}' \
       "https://github.com/$repo/releases/latest"
   )"
   tag="${release_url##*/}"
 
-  if [ ! "$version" = "$tag" ]; then
+  # Install
+  if [ ! -d "$mssions_path/${mssions[0]}" ]; then
+    gum confirm --prompt.align=center "$(
+      gum format "**$project** for offline playing not installed" \
+        '' 'Install it?'
+    )" || return 1
+    tag=''
+
+  # Update
+  elif [ ! "$version" = "$tag" ]; then
     gum confirm --prompt.align=center "$(
       gum format "Found update for **$project**" \
         "\`$version\` -> \`$tag\`" '' 'Update it?'
-    )" || return 0
-    gum spin --title "Download $project $tag..." -- \
-    curl -sfL "https://api.github.com/repos/$repo/tarball/$tag" \
-      -o "$project-$tag.tar.gz"
-
-    gum spin --title "Setup $project $tag..." -- \
-    tar xf "$project-$tag.tar.gz" -C "$mssions_path" --strip-components=2
-    rm --force -- "$project-$tag.tar.gz"
-
-    echo "$tag" > "$version_file"
+    )" || return 1
+  else
+    return 0
   fi
+
+  mkdir -p "$mssions_path"
+
+  gum spin --title "Download $project $tag..." -- \
+  curl -sfL "https://api.github.com/repos/$repo/tarball/$tag" \
+    -o "$project-$tag.tar.gz"
+
+  gum spin --title "Setup $project $tag..." -- \
+  tar xf "$project-$tag.tar.gz" -C "$mssions_path" --strip-components=2
+  rm --force -- "$project-$tag.tar.gz"
+
+  echo "$tag" > "$version_file"
 }
 
 # Launch DayZCommunityOfflineMode
@@ -864,6 +874,7 @@ runDayZOffline() {
     done
   ))"
 
+  [ "$(jq -er '.mods | length' "$DAYZ_MODS_DB")" -gt 0 ] &&
   mapfile -t sp_mods < <(
     gum choose --no-limit < <(
       while IFS=$'\t' read -r id name; do
@@ -1251,6 +1262,7 @@ jq -er --arg login "${steam_login:-anonymous}" --arg player "$dayz_user" \
 - **Players online**:\t`\(.playersOnline)`
 - **Servers online**:\t`\(.result | length)`"
 ' "$DAYZ_SERVER_DB" | gum format
+echo
 
 # Get game launch options
 mapfile -t dayz_launch_options < <(getDayZLaunchOptions)
@@ -1385,10 +1397,12 @@ if [ -n "${server_data:-}" ]; then
   fi
 
   # Add option for manage Desktop Entry
-  if [ -f "$APPLICATIONS_DIR/$desktop_entry_filename" ]; then
-    choose_play_options+=('Update Desktop Entry' 'Delete Desktop Entry')
-  else
-    choose_play_options+=('Create Desktop Entry')
+  if [ -d "$APPLICATIONS_DIR" ]; then
+    if [ -f "$APPLICATIONS_DIR/$desktop_entry_filename" ]; then
+      choose_play_options+=('Update Desktop Entry' 'Delete Desktop Entry')
+    else
+      choose_play_options+=('Create Desktop Entry')
+    fi
   fi
 else
   choose_play_options+=('Remove from favorites')

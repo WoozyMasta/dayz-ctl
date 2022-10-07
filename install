@@ -15,8 +15,8 @@ set -euo pipefail
 : "${TEST_MODE:-false}"
 
 jq_version='1.6'
-fzf_version='0.33.0'
-gum_version='0.6.0'
+fzf_version='0.34.0'
+gum_version='0.7.0'
 raw_url=https://raw.githubusercontent.com/WoozyMasta/dayz-ctl
 packages_data_fresh=0
 
@@ -52,7 +52,7 @@ ghInstall() {
 
   if ! command -v "$cmd" &>/dev/null; then
     printf '%s\t(%s)\n' "Install: $cmd" "$project"
-    if [ "$file" == "*.gz" ]; then
+    if [[ "$file" == *.gz ]]; then
       tempfile=$(mktemp "$cmd.XXXXXXXX.tmp")
       trap 'rm -rf -- "$tempfile"' EXIT
       curl -#fLo "$tempfile" "$release_url"|| \
@@ -115,6 +115,7 @@ done
 if ! command -v steam &>/dev/null && [ "$TEST_MODE" = false ]; then
   [ "${packages_data_fresh:=0}" -eq 0 ] &&
     ${package_update:-:} && ((packages_data_fresh+=1))
+  printf '%s\t(%s)\n' 'Install: Steam' 'https://store.steampowered.com'
   $package_manager steam ||
     fail 'Steam not installed, install it first please' \
       'https://store.steampowered.com/about/'
@@ -142,6 +143,8 @@ done
 
 # Install steamcmd
 if ! command -v steamcmd &>/dev/null; then
+  printf '%s\t(%s)\n' 'Install: SteamCMD' \
+    'https://developer.valvesoftware.com/wiki/SteamCMD'
   mkdir -p "$DAYZ_CTL_DIR/steamcmd"
   tempfile=$(mktemp "steamcmd.tar.gz.XXXXXXXX.tmp")
   trap 'rm -rf -- "$tempfile"' EXIT
@@ -161,9 +164,11 @@ ghInstall fzf junegunn $fzf_version/fzf-$fzf_version-linux_amd64.tar.gz
 ghInstall gum charmbracelet v$gum_version/gum_${gum_version}_linux_x86_64.tar.gz
 
 # Install dayz-ctl
+printf '%s\t(%s)\n' 'Install: Dayz CTL' 'https://github.com/WoozyMasta/dayz-ctl'
 curl -#fLo "$bin_path/dayz-ctl" "$raw_url/$DAYZ_CTL_VERSION/dayz-ctl" ||
   fail "Can't download dayz-ctl from https://github.com/WoozyMasta/dayz-ctl"
 chmod +x "$bin_path/dayz-ctl"
+installed_packages+=(dayz-ctl)
 
 # Check dayz-ctl installed success
 if ! command -v dayz-ctl &>/dev/null; then
@@ -176,7 +181,7 @@ if [ -d "$USER_APPLICATIONS_DIR" ]; then
   [ -d "$USER_ICONS_DIR" ] &&
     icon_path="$USER_ICONS_DIR/dayz-ctl.svg" && icon=dayz-ctl
 
-  curl -#fLo "${icon_path:-$bin_path/dayz-ctl.svg}" \
+  curl -sSfLo "${icon_path:-$bin_path/dayz-ctl.svg}" \
     "$raw_url/$DAYZ_CTL_VERSION/extra/dayz-ctl.svg" ||
     fail "Can't download dayz-ctl from https://github.com/WoozyMasta/dayz-ctl"
 
