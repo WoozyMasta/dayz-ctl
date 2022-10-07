@@ -1,0 +1,206 @@
+#!/usr/bin/env bash
+# Dayz CTL Install script
+# Copyright 2022 WoozyMasta <me@woozymasta.ru>
+# Licensed under the Apache License, Version 2.0
+
+set -euo pipefail
+
+: "${HOME:=${XDG_DATA_HOME:-$HOME}}"
+: "${DAYZ_CTL_VERSION:=master}"
+: "${DAYZ_CTL_DIR:=$HOME/.local/share/dayz-ctl}"
+: "${DAYZ_CTL_BIN_DIR:=$HOME/.local/share/dayz-ctl/bin}"
+: "${USER_APPLICATIONS_DIR:=$HOME/.local/share/applications}"
+: "${USER_ICONS_DIR:=$HOME/.local/share/icons}"
+: "${USER_DOCK_DIR:=$HOME/.config/plank/dock1/launchers}"
+: "${TEST_MODE:-false}"
+
+jq_version='1.6'
+fzf_version='0.33.0'
+gum_version='0.6.0'
+raw_url=https://raw.githubusercontent.com/WoozyMasta/dayz-ctl
+packages_data_fresh=0
+
+declare -a installed_packages=()
+declare -a os_releases=(
+  debian_version
+  redhat-release
+  arch-release
+  alpine-release
+  gentoo-release
+  SuSE-release
+)
+declare -A packages=(
+  [ping]=iputils-ping
+  [geoiplookup]=geoip-bin
+  [whois]=whois
+  [curl]=curl
+  [grep]=grep
+  [awk]=gawk
+  # [steam]=steam
+  # [steamcmd]=steamcmd
+)
+
+fail() {
+  >&2 printf '\e[1;31mERROR:\e[0m %s\n' "$*"
+  exit 1
+}
+
+ghInstall() {
+  local cmd=$1 author=$2 file=$3
+  local project="https://github.com/$author/$cmd"
+  local release_url="$project/releases/download/$file"
+
+  if ! command -v "$cmd" &>/dev/null; then
+    printf '%s\t(%s)\n' "Install: $cmd" "$project"
+    if [ "$file" == "*.gz" ]; then
+      tempfile=$(mktemp "$cmd.XXXXXXXX.tmp")
+      trap 'rm -rf -- "$tempfile"' EXIT
+      curl -sSfLo "$tempfile" "$release_url"|| \
+        fail "Can't download $cmd from $project"
+      tar xz "$tempfile" -C "$bin_path" "$cmd"
+      rm -rf -- "$tempfile"
+    else
+      curl -sSfLo "$bin_path/$cmd" "$release_url"
+    fi
+    chmod +x "$bin_path/$cmd"
+    installed_packages+=("$cmd")
+  fi
+}
+
+# Create working dir
+mkdir -p "$DAYZ_CTL_DIR"
+
+# Set bin install path
+if [ "$EUID" -eq 0 ]; then
+  USER_APPLICATIONS_DIR=/usr/share/applications
+  USER_ICONS_DIR=/usr/share/icons
+  if [ -d '/usr/bin' ]; then
+    bin_path='/usr/bin'
+  else
+    bin_path='/bin'
+  fi
+else
+  if [ -d "$HOME/.local/bin" ]; then
+    bin_path="$HOME/.local/bin"
+  else
+    bin_path="$DAYZ_CTL_BIN_DIR"
+    mkdir -p "$DAYZ_CTL_BIN_DIR"
+    export PATH="$DAYZ_CTL_BIN_DIR:$PATH"
+  fi
+  package_su="sudo"
+fi
+
+# Set package manager command for install
+for file in "${os_releases[@]}"; do
+  [ ! -f "/etc/$file" ] && continue
+  case $file in
+    'debian_version')
+      package_update="${package_su:-} apt update"
+      package_manager="${package_su:-} apt install -y";;
+    'redhat-release')
+      package_update="${package_su:-} yum update"
+      package_manager="${package_su:-} yum install -y";;
+    'arch-release')
+      package_manager="${package_su:-} pacman -Sy";;
+    'alpine-release')
+      package_manager="${package_su:-} apk add";;
+    'gentoo-release')
+      package_manager="${package_su:-} emerge -av";;
+    'SuSE-release')
+      package_manager="${package_su:-} zypper install";;
+  esac
+done
+
+# Check Steam installed
+if ! command -v steam &>/dev/null && [ "$TEST_MODE" = false ]; then
+  [ "${packages_data_fresh:=0}" -eq 0 ] &&
+    ${package_update:-:} && ((packages_data_fresh+=1))
+  $package_manager steam ||
+    fail 'Steam not installed, install it first please' \
+      'https://store.steampowered.com/about/'
+  installed_packages+=(steam)
+fi
+
+# Install not exists tools with package manager
+for pkg in "${!packages[@]}"; do
+  command -v "$pkg" &>/dev/null && continue
+
+  [ -z "${package_manager:-}" ] &&
+    echo "Cant't install $pkg" &&
+    fail "Failed to determine the package manager for your distribution," \
+      "please install these utilities yourself and run the installer again:" \
+      "${!packages[@]}"
+
+  [ "$EUID" -ne 0 ] &&
+    ! command -v sudo &>/dev/null && fail "Please run as root"
+
+  [ "${packages_data_fresh:=0}" -eq 0 ] && ${package_update:-:}
+  ((packages_data_fresh+=1))
+  $package_manager "${packages[$pkg]}"
+  installed_packages+=("${packages[$pkg]}")
+done
+
+# Install steamcmd
+if ! command -v steamcmd &>/dev/null; then
+  mkdir -p "$DAYZ_CTL_DIR/steamcmd"
+  tempfile=$(mktemp "steamcmd.tar.gz.XXXXXXXX.tmp")
+  trap 'rm -rf -- "$tempfile"' EXIT
+  curl -sSfLo "$tempfile" \
+    http://media.steampowered.com/client/installer/steamcmd_linux.tar.gz | \
+    tar xz -C "$DAYZ_CTL_DIR/steamcmd"
+  [ ! -h "$bin_path/steamcmd" ] && \
+    ln -s "$DAYZ_CTL_DIR/steamcmd/steamcmd.sh" "$bin_path/steamcmd"
+  installed_packages+=(steamcmd)
+fi
+
+# Install jq
+ghInstall jq stedolan jq-$jq_version/jq-linux64
+# Install fzf
+ghInstall fzf junegunn $fzf_version/fzf-$fzf_version-linux_amd64.tar.gz
+# Install gum
+ghInstall gum charmbracelet v$gum_version/gum_${gum_version}_linux_x86_64.tar.gz
+
+# Install dayz-ctl
+curl -sSfLo "$bin_path/dayz-ctl" "$raw_url/$DAYZ_CTL_VERSION/dayz-ctl" ||
+  fail "Can't download dayz-ctl from https://github.com/WoozyMasta/dayz-ctl"
+chmod +x "$bin_path/dayz-ctl"
+
+# Check dayz-ctl installed success
+if ! command -v dayz-ctl &>/dev/null; then
+  [ -f "$bin_path/dayz-ctl" ] &&
+    $package_su ln -s "$bin_path/dayz-ctl" /usr/bin/dayz-ctl
+fi
+
+# Create desktop entry
+if [ -d "$USER_APPLICATIONS_DIR" ]; then
+  [ -d "$USER_ICONS_DIR" ] &&
+    icon_path="$USER_ICONS_DIR/dayz-ctl.svg" && icon=dayz-ctl
+
+  curl -sSfLo "${icon_path:-$bin_path/dayz-ctl.svg}" \
+    "$raw_url/$DAYZ_CTL_VERSION/extra/dayz-ctl.svg" ||
+    fail "Can't download dayz-ctl from https://github.com/WoozyMasta/dayz-ctl"
+
+  printf '%s\n' \
+    '[Desktop Entry]' \
+    'Name=DayZ Command Line Launcher' \
+    'Comment=dayz-ctl - DayZ Command Line Launcher' \
+    "Exec=$bin_path/dayz-ctl" \
+    "Icon=${icon:-$bin_path/dayz-ctl.svg}" \
+    'Terminal=true' \
+    'Type=Application' \
+    'Categories=Game;' > \
+      "$USER_APPLICATIONS_DIR/dayz-ctl.desktop"
+
+  # Add plank dock launch
+  if [ -d "$USER_DOCK_DIR" ]; then
+    printf '%s\n' \
+      '[PlankDockItemPreferences]' \
+      "Launcher=file://$USER_APPLICATIONS_DIR/dayz-ctl.desktop" > \
+        "$USER_DOCK_DIR/dayz-ctl.dockitem"
+  fi
+fi
+
+echo "Installed: ${installed_packages[*]}"
+echo Done
+
+exec "$bin_path/dayz-ctl"

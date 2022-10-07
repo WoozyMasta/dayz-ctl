@@ -1,0 +1,1440 @@
+#!/usr/bin/env bash
+# Dayz CTL
+# Copyright 2022 WoozyMasta <me@woozymasta.ru>
+# Licensed under the Apache License, Version 2.0
+
+set -euo pipefail
+
+## Variables
+## ---------
+: "${DAYZ_CTL_VERSION:=0.1.0}"
+: "${DAYZ_CTL_NAME:=${0##*/}}"
+: "${DAYZ_GAME_ID:=221100}"
+
+: "${HOME:=${XDG_DATA_HOME:-$HOME}}"
+: "${APPLICATIONS_DIR:=$HOME/.local/share/applications}"
+: "${DAYZ_CTL_DIR:=$HOME/.local/share/dayz-ctl}"
+: "${DAYZ_CTL_BIN_DIR:=$HOME/.local/share/dayz-ctl/bin}"
+: "${DAYZ_CONFIG_FILE:=$DAYZ_CTL_DIR/$DAYZ_CTL_NAME.conf}"
+: "${DAYZ_SERVER_DB:=$DAYZ_CTL_DIR/servers.json}"
+: "${DAYZ_SERVER_DB_TTL:=300}" # TTL in seconds
+: "${DAYZ_NEWS_DB:=$DAYZ_CTL_DIR/news.json}"
+: "${DAYZ_NEWS_DB_TTL:=3600}" # TTL in seconds
+: "${DAYZ_MODS_DB:=$DAYZ_CTL_DIR/mods.json}"
+: "${DAYZ_PROFILE:=$DAYZ_CTL_DIR/profile.json}"
+: "${DAYZ_FZF_HISTORY:=$DAYZ_CTL_DIR/.$DAYZ_CTL_NAME-history}"
+: "${DAYZ_USERAGENT:="$DAYZ_CTL_NAME"}"
+: "${DAYZ_API:=https://dayzsalauncher.com/api/v1}"
+# https://api.dayzmagiclauncher.com/servers
+
+: "${DAYZ_STEAMCMD_ENABLED:=true}"
+: "${DAYZ_FILTER_MOD_LIMIT:=10}"
+
+[ -d "$DAYZ_CTL_BIN_DIR" ] && export PATH="$DAYZ_CTL_BIN_DIR:$PATH"
+
+# Dependent tools
+declare -A dependencies=(
+  [steam]=https://store.steampowered.com/about
+  [steamcmd]=https://developer.valvesoftware.com/wiki/SteamCMD
+  [ping]=""
+  [awk]=""
+  [grep]=""
+  [geoiplookup]=""
+  [whois]=https://github.com/rfc1036/whois
+  [curl]=https://github.com/curl/curl
+  [jq]=https://github.com/stedolan/jq
+  [gum]=https://github.com/charmbracelet/gum
+  [fzf]=https://github.com/junegunn/fzf
+)
+
+# Filters for server browser
+declare -A server_filters=(
+  [Moded]='.value.mods | length > 0'
+  [Mods < $DAYZ_FILTER_MOD_LIMIT]=".value.mods | length < $DAYZ_FILTER_MOD_LIMIT"
+  [Not Moded]='.value.mods | length == 0'
+  [Without Password]='.value.password==false'
+  [First Person]='.value.firstPersonOnly'
+  [Oficial Server]='.value.shard=="public"'
+  [With Players]='.value.players > 0'
+  [Not Full]='.value.players < .value.maxPlayers'
+  [Day Time]='def d:(.value.time|split(":")[0]|tonumber); d >= 6 and d <= 18'
+  [Night Time]='def d:(.value.time|split(":")[0]|tonumber); d < 6 or d > 18'
+  [BattlEye]='.value.battlEye'
+)
+
+# GUM colors
+export GUM_SPIN_SPINNER=meter
+export GUM_INPUT_WIDTH=80
+export GUM_CHOOSE_CURSOR_PREFIX='▫️  '
+export GUM_CHOOSE_SELECTED_PREFIX='🟩 '
+export GUM_CHOOSE_UNSELECTED_PREFIX='⬛ '
+# FZF colors
+# https://github.com/junegunn/fzf/wiki/Color-schemes
+export FZF_DEFAULT_OPTS="
+  --color=fg:-1,bg:-1,hl:141
+  --color=fg+:212,bg+:236,hl+:105
+  --color=info:99,prompt:212,pointer:212,marker:212,spinner:212,header:212
+  --history=\"$DAYZ_FZF_HISTORY\" --history-size=100 --no-hscroll
+  --info=inline --cycle
+"
+
+## Functions
+## ---------
+
+# Print to stderr and exit with 1 code
+fail() {
+  closeScreen
+  >&2 gum style --foreground=#944 --border=rounded --border-foreground=#F44 \
+    --padding="0 3" "$@"
+  exit 1
+}
+
+# Base profile config
+baseProfile() {
+  cat <<- base_profile
+{
+"steam_login":null,"player":null,"favorites":[],"history":[],"options":{
+  "window":{"enabled":false,"description":
+    "Launches in windowed mode"},
+  "noborder":{"enabled":false,"description":
+    "Borderless windowed mode"},
+  "nosplash":{"enabled":true,"description":
+    "Disables the splash on startup"},
+  "skipintro":{"enabled":true,"description":
+    "Disables the intro on startup"},
+  "filePathing":{"enabled":false,"description":
+    "Enables the game use unpacked loacal data"},
+  "doLogs":{"enabled":false,"description":
+    "Force logging"},
+  "buldozer":{"enabled":false,"description":
+    "Starts Buldozer mode"},
+  "winxp":{"enabled":false,"description":
+    "Forces the game to use Direct3D version 9 only"},
+  "high":{"enabled":true,"description":
+    "Giving the process more priority"},
+  "USEALLAVAILABLECORES":{"enabled":true,"description":
+    "use the all available amount of cores"},
+  "useallavailablecores":{"enabled":true,"description":
+    "use the all available amount of cores"},
+  "par":{"enabled":false,"value":null,"description":
+    "Parameters file"},
+  "world":{"enabled":true,"value":"empty","description":
+    "empty, ChernarusPlus"},
+  "profiles":{"enabled":false,"value":null,"description":
+    "profiles"},
+  "noPause":{"enabled":false,"value":null,"description":
+    "-1 Default, 0 Graphics Only, 1 Graphics and sounds"},
+  "maxMem":{"enabled":false,"value":null,"description":
+    "Maiximum RAM in megabytes"},
+  "maxVRAM":{"enabled":false,"value":null,"description":
+    "Maiximum VRAM in megabytes"},
+  "cpuCount":{"enabled":false,"value":$(nproc||echo null),"description":
+    "Defines number of CPUs/cores. 2,4,6,8"},
+  "exThreads":{"enabled":false,"value":null,"description":
+    "Defines the amount of extra threads. 0,1,3,5,7"},
+  "noBenchmark":{"enabled":false,"description":
+    "Disable benchmarking"},
+  "malloc":{"enabled":false,"value":null,"description":
+    "https://community.bistudio.com/wiki/Arma_2:_Custom_Memory_Allocator"},
+  "scriptDebug":{"enabled":false,"value":false,"description":
+    "Debug scripts"}
+},
+"version":"$DAYZ_CTL_VERSION"}
+base_profile
+}
+
+# Set and write config variables
+setConfigVar() {
+  local key="$1" value="$2"
+  [ ! -f "$DAYZ_CONFIG_FILE" ] && touch "$DAYZ_CONFIG_FILE"
+  if grep -q "^$key=" "$DAYZ_CONFIG_FILE"; then
+    sed -i "s/^$key=.*/$key=$value/" "$DAYZ_CONFIG_FILE"
+  else
+    echo "$key=$value" >> "$DAYZ_CONFIG_FILE"
+  fi
+  export "$key"="$value"
+}
+
+# Write stdin to same file
+sponge() {
+  local tempfile file="$1"
+  tempfile=$(
+    mktemp "${TEMP_DIR_PATH:-/tmp}/$(basename "$file").XXXXXXXX.tmp"
+  )
+  trap 'rm -rf -- "$tempfile"' ERR
+  cat >"$tempfile"
+
+  if [ -f "$file" ]; then
+    chmod --reference="$file" "$tempfile"
+    mv -f "$tempfile" "$file"
+  elif [ -n "$file" ] && [ ! -e "$file" ]; then
+    cat "$tempfile" >"$file"
+  else
+    cat "$tempfile"
+  fi
+
+  rm -f "$tempfile"
+}
+
+# Human readable time ago for two unix timestamps
+timeAgo() {
+  local diff=$(( ${2:-$(date +%s)} - $1 )) str min=60 hrs=3600 day=86400
+
+  if (( diff < 30 )); then
+    str="${diff}s"
+  elif (( diff < 1 * hrs )); then
+    str="$(( (diff + min / 2) / min ))m"
+  elif (( diff < 1 * day )); then
+    str="$(( (diff + hrs / 2) / hrs ))h"
+  else
+    str="$(( (diff + day / 2) / day))d"
+  fi
+  echo "🕒 $str"
+}
+
+# Get players online in DayZ from Steam
+getPlayersOnline() {
+  local metod='ISteamUserStats/GetNumberOfCurrentPlayers/v1/'
+  curl -m 10 -H "User-Agent: $DAYZ_USERAGENT" -sSfL \
+    "https://api.steampowered.com/$metod?appid=$DAYZ_GAME_ID" | \
+  jq -er '.response.player_count' || echo '❔'
+}
+
+# Get DayZ news from dayz.com or from disk if TTL not expired
+getDayzNews() {
+  local count data timestamp time_limit
+
+  count="${1:-$((($(tput lines) - 22)/2))}"
+  [ "$count" -lt 1 ] && return 0
+
+  if [ ! -f "$DAYZ_NEWS_DB" ]; then
+    updateDayzNews
+  else
+    timestamp="$(date +%s -r "$DAYZ_NEWS_DB")"
+    time_limit=$(date +%s -d "-${DAYZ_NEWS_DB_TTL}sec")
+    [ "$timestamp" -gt "$time_limit" ] || updateDayzNews
+  fi
+
+  {
+    echo '# Latest news:'
+    jq -er --argjson count "$count" '.rows[:$count][] |
+      "* **\(.title)**
+      https://dayz.com/article/\(.ArticleCategory.slug)/\(.slug)\n"
+    ' "$DAYZ_NEWS_DB" || echo '❔'
+  } | gum format
+}
+
+# Save News from dayz.com
+updateDayzNews() {
+  gum spin --title 'Get DayZ news...' -- \
+  curl -m 10 -H "User-Agent: $DAYZ_USERAGENT" -sSfL \
+    -o "$DAYZ_NEWS_DB" "https://dayz.com/api/article?rowsPerPage=100"
+}
+
+# Setup lauch options
+setDayZLaunchOptions() {
+  local opts chooses=()
+  opts="$(jq -er '.options' "$DAYZ_PROFILE")"
+  mapfile -t chooses < <(
+    gum choose --no-limit < <(
+      jq -er '
+        to_entries[] | "\(
+          if .value.enabled == true then "🟢" else "🔴" end
+        )\t\(.key)\t\(
+          if .value.value then "`\(.value.value)`" else "" end
+        )"' \
+        <<< "$opts" | \
+      gum format | sed 's/^\s*//'
+    ) | cut -f2
+  )
+
+  local key description value new_value state
+  for key in "${chooses[@]}"; do
+    IFS=$'\t' read -r description state value < <(
+      jq -er --arg key "$key" '
+        ."\($key)" | [
+          .description // $key,
+          .enabled,
+          (if has("value") then .value else false end)
+        ] | @tsv
+      ' <<< "$opts"
+    )
+    # str = .value
+    # not_exist = false
+    # null = ''
+    if gum confirm --affirmative="🟢 Enable" --negative="🔴 Disable" -- "$(
+      gum format -- \
+        "* Key: \`-$key\`" \
+        "$([ ! "$value" = false ] && echo "* Value: \`$value\`")" \
+        "* Enabled: $state" \
+        '' "**$description**"
+    )"
+
+    # Enable key
+    then
+      jq -er --arg key "$key" '.options."\($key)".enabled = true' \
+        "$DAYZ_PROFILE" | sponge "$DAYZ_PROFILE"
+
+      # Write value
+      if [ ! "$value" = false ]; then
+        new_value="$(
+          gum input --value="$value" --placeholder="-$key ($description)"
+        )"
+        jq -er --arg key "$key" --arg val "$new_value" \
+          '.options."\($key)".value = $val' \
+          "$DAYZ_PROFILE" | sponge "$DAYZ_PROFILE"
+      fi
+
+    # Disable key
+    else
+      jq -er --arg key "$key" '.options."\($key)".enabled = false' \
+        "$DAYZ_PROFILE" | sponge "$DAYZ_PROFILE"
+    fi
+  done
+}
+
+# Get launch options from config
+getDayZLaunchOptions() {
+  jq -er '
+    .options | to_entries[] | select(.value.enabled == true) |
+    "-\(.key)\(if .value.value then "=\(.value.value)" else "" end)"
+  ' "$DAYZ_PROFILE"
+}
+
+# Get all servers list from dayzsalauncher.com
+requestServersList() {
+  gum spin --title 'Get DayZ server list...' -- \
+    curl -o "$DAYZ_SERVER_DB" \
+      -m 30 -H "User-Agent: $DAYZ_USERAGENT" \
+      -sSfL "$DAYZ_API/launcher/servers/dayz"
+  jq -er '.status? | numbers | . == 0' "$DAYZ_SERVER_DB" &>/dev/null ||
+    fail "Something wrong with get servers list, please try again"
+
+  jq -cMer --argjson count "$(getPlayersOnline)" \
+    '. += {"playersOnline": $count}' "$DAYZ_SERVER_DB" | \
+  sponge "$DAYZ_SERVER_DB"
+}
+
+# Get servers list from internet if TTL expired or data not stored
+checkServersList() {
+  local timestamp time_limit
+  if [ -f "$DAYZ_SERVER_DB" ]; then
+    timestamp="$(date +%s -r "$DAYZ_SERVER_DB")"
+    time_limit=$(date +%s -d "-${DAYZ_SERVER_DB_TTL}sec")
+    [ "$timestamp" -gt "$time_limit" ] || requestServersList
+  else
+    requestServersList
+  fi
+}
+
+# Multiplie select filters and print select requests
+applyServerFiltres() {
+  mapfile -t selected_filters < <(
+    gum choose --no-limit --height=11 "${!server_filters[@]}"
+  )
+  for filter in "${selected_filters[@]}"; do
+    printf 'select(%s) | ' "${server_filters[$filter]}"
+  done
+}
+
+# Get list and count of maps, select one map and print select request
+applyServerMapFiltres() {
+  chose=$(gum choose < <(
+    jq -er '
+      .result | map(.map) |
+      reduce .[] as $i ({};setpath([$i]; getpath([$i]) + 1)) |
+      to_entries | sort_by(.value) | reverse[] | "\(.key) [\(.value)]"
+    ' "$DAYZ_SERVER_DB"
+  ))
+  printf 'select(.value.map == "%s") | ' "${chose%[[:space:]][*}"
+}
+
+# Preview window for show server details
+fzfPreview() {
+  local index="$1" server_data server_ip mods_count ping_limit=1 ping_count=1
+
+  # If index not number return message as offline
+  [[ $index =~ ^[0-9]+$ ]] || { echo "🔴 Server Offline"; return 0; }
+
+  serverCountryWhois() {
+    whois "$1" | awk -F ':[ \t]+' \
+      'tolower($1) ~ /^country$/ { print ($2==""?"❔":$2); exit; }'
+  }
+
+  serverCountryGeoIP() {
+    local ip
+    ip=$(geoiplookup "$1")
+    if grep -q 'not found' <<< "$ip"; then
+      serverCountryWhois "$1"
+    else
+      echo "${ip#*:[[:space:]]}"
+    fi
+  }
+
+  serverPing() {
+    ping -q -c $ping_count -W $ping_limit "$1" | awk -F '/' \
+      'END {print ($5==""?"❔":$5 " ms")}'
+  }
+
+  server_data="$(
+    jq -er --argjson index "$index" '.result[$index]' \
+      "$DAYZ_SERVER_DB" 2>/dev/null
+  )"
+
+  jq -er '"# \(.name)
+  ## Server status:
+  Parameter | Value
+  --- | ---
+  Online:             | \(.players)/\(.maxPlayers)
+  Time:               | \(.time + " " + if
+                          (.time | split(":")[0] | tonumber) < 6 or
+                          (.time | split(":")[0] | tonumber) > 18 then
+                          "🌙" else "☀️"
+                        end)
+  Time Acceleration:  | x\(def t: .timeAcceleration; if t then t else 1 end)
+  Map:                | \(.map)
+  Password:           | \(if .password then "🔒 [protected]" else "🔓" end)
+  BattlEye/VAC:       | \(if .battlEye then "🟢" else "🔴" end + "/" +
+                          if .vac then "🟢" else "🔴" end)
+  Only First Person:  | \(if .firstPersonOnly then "🟢" else "🔴" end)
+  Public:             | \(if .shard=="public" then "🟢" else "🔴" end)
+  Modded:             | \(if .mods|length > 0 then "🟢 [" +
+                          (.mods|length|tostring) + "]" else "🔴" end)
+  Version:            | \(.version)"' <<< "$server_data" | gum format
+
+
+  server_ip="$(jq -er '.endpoint.ip' <<< "$server_data")"
+  gum format <<- net_stats
+  ## Networking:
+  * **Country**:    \`$(serverCountryGeoIP "$server_ip")\`
+  * **Ping**:       \`$(serverPing "$server_ip")\`
+  * **Server IP**:  \`$server_ip\`
+  * **Game port**:  \`$(jq -er '.gamePort' <<< "$server_data")\`
+  * **Query port**: \`$(jq -er '.endpoint.port' <<< "$server_data")\`
+net_stats
+
+  mods_count=$(jq -er '.mods | length' <<< "$server_data" || echo 0)
+  if [ "$mods_count" -gt 0 ]; then
+    {
+      printf '%s\n\n' "## Mods [$mods_count]:"
+      while IFS=$'\t' read -r name id; do
+        if [ -d "$dayz_workshop_path/$id" ]; then
+          printf '* ✅ '
+        else
+          printf '* ❌ '
+        fi
+        printf '**%s**\n[⠀](%s)\n' \
+          "$name" "https://steamcommunity.com/sharedfiles/filedetails/?id=$id"
+      done < <(
+        jq -er '.mods[] | [.name, .steamWorkshopId] | @tsv' <<< "$server_data"
+      )
+    } | gum format
+  fi
+}
+
+# Main window for show servers list
+fzfServers() {
+  local filter="$1" preview=up:wrap
+
+  [ "$(tput cols)" -ge 120 ] && preview=right:72:wrap
+  jq -er '
+    .result | to_entries |
+    .[] | '"$filter"' [.key, .value.name] | @tsv
+  ' "$DAYZ_SERVER_DB" | \
+  fzf --delimiter '\t' --with-nth 2 \
+    --preview 'fzfPreview {1}' --preview-window=$preview | \
+  cut -f1
+}
+
+# Get some server data by server id
+getServerData() {
+  local id=$1
+  [ ! "$id" = null ] || return 0
+  jq -er --argjson index "$id" '.result[$index]' "$DAYZ_SERVER_DB" 2>/dev/null
+}
+
+# Print mod ID not installed mods
+getNotInstalledMods() {
+  local data="$1" exist_mods=() missed_mods=() close_steam=0 id name url
+
+  [ "$(jq -er '.mods | length' <<< "$data")" -eq 0 ] && return 0
+
+  # Get list of not installed mods
+  mapfile -t exist_mods < <(jq -cMer '.mods[].id' "$DAYZ_MODS_DB")
+  for id in $(jq -er '.mods[].steamWorkshopId' <<< "$data"); do
+    [[ ! " ${exist_mods[*]} " =~ [[:space:]]"$id"[[:space:]] ]] &&
+      missed_mods+=("$id")
+  done
+
+  # Show missed mod data
+  [ "${#missed_mods[@]}" -eq 0 ] || {
+    printf '## %s\n%s\n' "Missed ${#missed_mods[@]} mods" \
+      'The server has mods that you don'\''t have:'
+
+    for id in "${missed_mods[@]}"; do
+      jq -er --argjson id "$id" '
+        def url: "https://steamcommunity.com/sharedfiles/filedetails/?id=";
+        .mods[] | select(.steamWorkshopId == $id) |
+        "- [\(.name)](\(url)\(.steamWorkshopId))"' <<< "$data"
+    done
+
+    printf '\n%s\n' "You need to install these mods in order to play."
+    printf '_%s %s_\n' \
+      "Let the launcher do it by itself or follow all links and subscribe" \
+      "to each mod, then wait for all mods to install and reconnect"
+  } | gum format
+
+  # Helper for install mods without StemCMD
+  if [ ! $DAYZ_STEAMCMD_ENABLED = true ] && [ "${#missed_mods[@]}" -gt 0 ]; then
+    if gum confirm --prompt.align=center \
+       'Open all Steam Workshop links for missing mods for you?'
+    then
+      for id in "${missed_mods[@]}"; do
+        url="https://steamcommunity.com/sharedfiles/filedetails/?id=$(
+          jq -er --argjson id "$id" '
+            .mods[] | select(.steamWorkshopId == $id) | .steamWorkshopId
+          ' <<< "$data"
+        )"
+        xdg-open "$url"
+      done
+    fi
+    gum format \
+      'Go back to launching the game again after Steam installs all the mods'
+    exit 0
+
+  # Update multiplie Workshop Mods
+  elif ! gum confirm --affirmative='Skip' --negative='Update' \
+    --prompt.border=hidden --timeout=10s \
+    "Want to update all mods before launch?"
+  then
+    close_steam=1
+    while IFS=$'\t' read -r id name _; do
+      workshopDownload "$id" "$name"
+    done < <(jq -er '.mods[] | [.steamWorkshopId, .name] | @tsv' <<< "$data")
+
+  # Install multiplie Workshop Mods
+  elif [ "${#missed_mods[@]}" -ne 0 ] &&
+    gum confirm --affirmative='Install' --negative='Exit' \
+      --prompt.border=hidden \
+      "Want to install ${#missed_mods[@]} missing mods automatically?"
+  then
+    close_steam=1
+    for id in "${missed_mods[@]}"; do
+      name="$(
+        jq -er --argjson id "$id" \
+        '.mods[] | select(.steamWorkshopId == $id) | .name' <<< "$data"
+      )"
+      workshopDownload "$id" "$name"
+      echo "$id" > "$dayz_workshop_path/$id/.dayz-ctl"
+    done
+  fi
+
+  # Checks
+  for id in $(jq -er '.mods[].steamWorkshopId' <<< "$data"); do
+    [ ! -d "$dayz_workshop_path/$id" ] &&
+      fail "Mod \"$id\" not installed"
+    [ ! -h "$dayz_path/@$id" ] &&
+      ln -sr "$dayz_workshop_path/$id" "$dayz_path/@$id"
+  done
+
+  [ "$close_steam" = 0 ] || closeSteamClient
+}
+
+# Download or update mod from workshop with SteamCMD
+workshopDownload() {
+  local id="$1" name="$2" action
+  # Fail if account anonymous
+  [ "${steam_login:-anonymous}" = anonymous ] &&
+    fail "Can't $action mods with \"anonymous\" Steam account"
+  # Install mod with SteamCMD
+  [ ! -d "$dayz_workshop_path/$id" ] && action=Install
+  gum spin --title "${action:-Update} \"$name\" mod..." -- \
+    steamcmd +@ShutdownOnFailedCommand 1 +login "$steam_login" \
+      +workshop_download_item "$DAYZ_GAME_ID" "$id" validate +quit ||
+    fail "ReLogin in Steam please:" "steamcmd +login $steam_login +quit"
+}
+
+# Run Steam if not runned
+runSteamClient() {
+  pgrep steam &>/dev/null && return 0
+  steam -nofriendsui -silent &>/dev/null & disown "%steam"
+  gum spin --title='Launch Steam Client..' --spinner=dot -- sleep 10s
+  gum confirm --prompt.align=center "$(
+    gum format 'Please make sure Steam is running and' \
+      'you have successfully logged into your account.' '' \
+      'Otherwise, you may have to re-authorize after installing mods.' '' \
+
+  )" || return 0
+}
+
+# Kill Steam Client process and wait for close
+closeSteamClient() {
+  pgrep steam &>/dev/null || return 0
+  gum confirm --prompt.align=center "$(
+    gum format 'For normal work with the steamcmd program,' \
+      'it is recommended to close the Steam client.' '' \
+      '**Do you agree to close Steam?**'
+  )" || return 0
+  gum spin --title='Shutdown Steam Client..' --spinner=dot -- \
+    steam -shutdown
+  gum spin --title='Shutdown Steam Client...' --spinner=dot -- \
+    sleep 10s
+  pgrep steam &>/dev/null || return 0
+  gum spin --title='Shutdown Steam Client force...' --spinner=dot -- \
+    timeout 10 killall -w steam || killall -ws9 steam
+}
+
+# Get info about all installed mods
+getInstalledMods() {
+  local data
+  for mod in "$dayz_workshop_path"/*/meta.cpp; do
+    [ ! -f "$mod" ] && continue
+    name="$(grep -Po 'name\s*=\s*"\K(.*)(?="\s*;)' "$mod")"
+    id="$(grep -Po 'publishedid\s*=\s*\K(\d+)(?=\s*;)' "$mod")"
+    ts="$(grep -Po 'timestamp\s*=\s*\K(\d+)(?=\s*;)' "$mod")"
+    size="$(du -bd0 "${mod%/*}" | cut -f1)"
+    data+="{\"name\":\"$name\", \"id\":$id, \"timestamp\":$ts, \"size\":$size}"
+  done
+  jq -cMser --arg sum "$(getInstalledModsSum)" \
+    '{sum: $sum, mods: .}' <<< "${data:-}" > "$DAYZ_MODS_DB"
+}
+
+# Get controll sum of installed mods
+getInstalledModsSum() {
+  local md5
+  md5=$(md5sum <<< "$(
+    for d in "$dayz_workshop_path"/*; do
+      [ -d "$d" ] && printf '%s/' "${d##*/}"
+    done
+  )")
+  echo "${md5%% *}"
+}
+
+# Return installed mods json data
+updateModsDB() {
+  [ -f "$DAYZ_MODS_DB" ] ||
+    getInstalledMods
+  [ "$(getInstalledModsSum)" = "$(jq -er '.sum' "$DAYZ_MODS_DB")" ] ||
+    getInstalledMods
+}
+
+# Show installed mods MD data
+printInstalledModsInfo() {
+  updateModsDB
+
+  [ "$(jq -er '.mods | length' "$DAYZ_MODS_DB")" -eq 0 ] &&
+    echo "Not found any installed mod" && return 0
+
+  printf '%s\n' '# List of Currently Installed DayZ Mods' \
+    'Name | Size | ID | dayz-ctl' '--- | --- | --- | ---'
+  while IFS=$'\t' read -r name size id _; do
+    printf '%s | %s | %s | ' "$name" "$size Mb" \
+      "$id"
+    if [ -f "$dayz_workshop_path/$id/.dayz-ctl" ]; then
+      echo "🟢"
+    else
+      echo "🔴"
+    fi
+  done < <(
+    jq -er '
+      .mods | sort_by(.size)[] |
+      [.name, (.size/1024/1024*100.0|round/100.0), .id] | @tsv
+    ' "$DAYZ_MODS_DB"
+  )
+  jq -er '
+    .mods | [.[].size] |
+    "\n\n- **Total**:\t`\(add/1024/1024/1024*100.0|round/100.0)` Gb"
+  ' "$DAYZ_MODS_DB"
+  printf -- '- **Path**:\t_%s_\n' "$dayz_workshop_path"
+}
+
+# Add last played server to profile
+addHistoryServer() {
+  local ip="$1" port="$2" name="$3" ts limit=10
+  ts="$(date +%s)"
+
+  if jq -er --arg ip "$ip" --argjson port "$port" \
+    '.history[] | select(.ip == $ip and .port == $port) | .name' \
+    "$DAYZ_PROFILE" &>/dev/null
+  then
+    # If present, then delete the existing one, install it first and
+    # remove all unnecessary items that exceed the length
+    jq -er --arg ip "$ip" --argjson port "$port" --arg name "$name" \
+      --argjson ts "$ts" --argjson limit "$limit" '
+        del(.history[] | select(.ip == $ip and .port == $port)) |
+        .history[:0] += [{"name": $name, "ip": $ip, "port": $port, "ts": $ts}] |
+        del(.history[$limit:])
+      ' "$DAYZ_PROFILE" | sponge "$DAYZ_PROFILE"
+  else
+    # If not present add first and remove latest (shift)
+    jq -er --arg ip "$ip" --argjson port "$port" --arg name "$name" \
+      --argjson ts "$ts" --argjson limit "$limit" '
+        .history[:0] += [{"name": $name, "ip": $ip, "port": $port, "ts": $ts}] |
+        del(.history[$limit:])
+      ' "$DAYZ_PROFILE" | sponge "$DAYZ_PROFILE"
+  fi
+}
+
+# Add favorite servers to profile
+addFavoriteServer() {
+  local ip="$1" port="$2" name="$3"
+  jq -er --arg ip "$ip" --argjson port "$port" --arg name "$name" \
+    '.favorites += [{"name": $name, "ip": $ip, "port": $port}]' \
+    "$DAYZ_PROFILE" | sponge "$DAYZ_PROFILE"
+}
+
+# Check server exist in favorits, and set choose option
+checkFavoritsPresent() {
+  local ip="$1" port="$2"
+  jq -er --arg ip "$ip" --argjson port "$port" \
+    '.favorites[] | select(.ip == $ip and .port == $port) | .name' \
+    "$DAYZ_PROFILE" &>/dev/null
+}
+
+# Get favorite server from profile and use it as filter for select him in all
+getFavoriteServers() {
+  local type="${1:-favorites}"
+  local request fav not_exist online=() offline=() ts tsc history=()
+
+  request="$(
+    jq -er --arg type "$type" '[
+      ."\($type)"[] |
+      "(.value.endpoint.ip == \"\(.ip)\" and .value.endpoint.port == \(.port))"
+    ] | join(" or ")' "$DAYZ_PROFILE"
+  )"
+
+  mapfile -t online < <(
+    jq -er '
+    .result | to_entries[] | select('"$request"') |
+    [
+      "\(.value.endpoint.ip):\(.value.endpoint.port)",
+      .key, "🟢 \(.value.name)"
+    ] | @tsv' "$DAYZ_SERVER_DB" | sort -k3
+  )
+
+  for fav in $(
+    jq -er --arg type "$type" \
+      '."\($type)"[] | "\(.ip):\(.port)"' "$DAYZ_PROFILE" | \
+    sort -nr)
+  do
+    [[ " ${online[*]} " =~ [[:space:]]"$fav"[[:space:]] ]] && continue
+    not_exist="$(
+      jq -er --arg type "$type" --arg server "$fav" \
+        '."\($type)"[] | select(
+          .ip == ($server | split(":")[0]) and
+          .port == ($server | split(":")[1] | tonumber)
+        ) | .name' "$DAYZ_PROFILE"
+    )"
+    offline+=("$(printf '%s\tnull\t🔴 %s\n' "$fav" "$not_exist")")
+  done
+
+  if [ "$type" = history ]; then
+    tsc="$(date +%s)"
+    online+=("${offline[@]}")
+    for fav in "${online[@]}"; do
+      ts="$(
+        jq -er --arg server "${fav%%[[:space:]]*}" '
+          .history[] | select(
+            .ip == ($server | split(":")[0]) and
+            .port == ($server | split(":")[1] | tonumber)
+          ) | .ts' "$DAYZ_PROFILE"
+      )"
+      history+=("$(printf '%s\t%s\n' "$ts" "$fav [$(timeAgo "$ts" "$tsc")]")")
+    done
+    printf '%s\n' "${history[@]}" | sort -nr | \
+    fzf --delimiter '\t' --with-nth 4 \
+      --preview 'fzfPreview {3}' --preview-window=right | \
+    cut -f3-4
+  else
+    printf '%s\n' "${online[@]}" "${offline[@]}" | \
+    fzf --delimiter '\t' --with-nth 3 \
+      --preview 'fzfPreview {2}' --preview-window=right | \
+    cut -f2-3
+  fi
+}
+
+deleteFavoriteServer() {
+  local ip="$1" port="$2"
+  jq -er --arg ip "$ip" --argjson port "$port" \
+    'del(.favorites[] | select(.ip == $ip and .port == $port))' \
+    "$DAYZ_PROFILE" | sponge "$DAYZ_PROFILE"
+}
+
+deleteFavoriteServerOffline() {
+  local name="$1"
+  jq -er --arg name "$name" 'del(.favorites[] | select(.name == $name))' \
+    "$DAYZ_PROFILE" | sponge "$DAYZ_PROFILE"
+}
+
+# Connect by IP:port
+directConnect() {
+  local ip port
+  ip=$(
+    gum input --prompt='Server IP address: ' --placeholder="127.0.0.1"
+  )
+  port=$(
+    gum input --prompt='Server game port: ' --placeholder="2302" --value="2302"
+  )
+
+  jq -er --arg ip "$ip" --argjson port "$port" \
+    '.result[] | select(.endpoint.ip == $ip and .endpoint.port == $port) | .' \
+    "$DAYZ_SERVER_DB" 2>/dev/null || directManualConnect "$ip" "$port"
+}
+
+# Connect by IP:port and mods list
+directManualConnect() {
+  local ip="$1" port="$2"
+
+  gum confirm --affirmative='Try' "$(
+    gum format "Server \`$1:$2\` not found in SteamMaster server" \
+      '' 'You want try to connect any way?'
+  )" || exit 0
+
+  mapfile -t sp_mods < <(
+    gum choose --no-limit < <(
+      while IFS=$'\t' read -r id name; do
+        printf '%s\t%s\n' "$id" "$name";
+      done < <(
+        jq -er '.mods | sort_by(.name)[] | [.id, .name] | @tsv' "$DAYZ_MODS_DB"
+      )
+    ) | cut -f1
+  )
+
+  if gum confirm 'Server with password?'; then
+    server_password="-password=$(
+      gum input --password --prompt="Password: " --placeholder='Server password'
+    )"
+  fi
+
+  if [ ${#sp_mods[@]} -ne 0 ]; then
+    mods_arg="-mod=$(
+      jq -ser '[to_entries[] | "@\(.value)"] | join(";")' <<< "${sp_mods[@]}"
+    )"
+  fi
+
+  runDayZ "${mods_arg:-}" "-connect=$ip" "-port=$port" "${server_password:-}" \
+    "${dayz_launch_options[@]}"
+}
+
+# Update DayZCommunityOfflineMode
+updateDayZOffline() {
+  local repo=Arkensor/DayZCommunityOfflineMode
+  local mssions_path=$dayz_path/Missions
+  local mssions=(
+    DayZCommunityOfflineMode.ChernarusPlus
+    DayZCommunityOfflineMode.Enoch
+    DayZCommunityOfflineMode.Namalsk
+  )
+  local version_file="$mssions_path/${mssions[0]}/.version"
+  local project="${repo##*/}" tag=0 version=0 release_url
+
+  [ -f "$version_file" ] && version=$(<"$version_file")
+
+  release_url="$(
+    curl -fs -o/dev/null -w '%{redirect_url}' \
+      "https://github.com/$repo/releases/latest"
+  )"
+  tag="${release_url##*/}"
+
+  if [ ! "$version" = "$tag" ]; then
+    gum confirm --prompt.align=center "$(
+      gum format "Found update for **$project**" \
+        "\`$version\` -> \`$tag\`" '' 'Update it?'
+    )" || return 0
+    gum spin --title "Download $project $tag..." -- \
+    curl -sfL "https://api.github.com/repos/$repo/tarball/$tag" \
+      -o "$project-$tag.tar.gz"
+
+    gum spin --title "Setup $project $tag..." -- \
+    tar xf "$project-$tag.tar.gz" -C "$mssions_path" --strip-components=2
+    rm --force -- "$project-$tag.tar.gz"
+
+    echo "$tag" > "$version_file"
+  fi
+}
+
+# Launch DayZCommunityOfflineMode
+runDayZOffline() {
+  local args=("$@") mission sp_mods=() mods_arg id
+  updateDayZOffline
+
+  mission="$(gum choose < <(
+    for d in "$dayz_path/Missions/"*;
+      do [ -d "$d" ] && echo "${d##*/}"
+    done
+  ))"
+
+  mapfile -t sp_mods < <(
+    gum choose --no-limit < <(
+      while IFS=$'\t' read -r id name; do
+        printf '%s\t%s\n' "$id" "$name";
+      done < <(
+        jq -er '.mods | sort_by(.name)[] | [.id, .name] | @tsv' "$DAYZ_MODS_DB"
+      )
+    ) | cut -f1
+  )
+
+  if [ "$mission" = DayZCommunityOfflineMode.Namalsk ]; then
+    # 2289456201 - Namalsk Island
+    # 2289461232 - Namalsk Survival
+    for id in 2289456201 2289461232; do
+      [[ ! " ${sp_mods[*]} " =~ [[:space:]]"$id"[[:space:]] ]] &&
+      sp_mods+=("$id")
+    done
+  fi
+
+  # if mods selected
+  if [ ${#sp_mods[@]} -ne 0 ]; then
+    mods_arg="-mod=$(
+      jq -ser '[to_entries[] | "@\(.value)"] | join(";")' <<< "${sp_mods[@]}"
+    )"
+
+    if ! gum confirm --affirmative='Skip' --negative='Update' \
+      --prompt.border=hidden --timeout=10s \
+      "Want to update all mods before launch?"
+    then
+      for id in "${sp_mods[@]}"; do
+        workshopDownload "$id" "Mod: $id"
+        [ ! -h "$dayz_path/@$id" ] && \
+          ln -sr "$dayz_workshop_path/$id" "$dayz_path/@$id"
+      done
+      closeSteamClient
+    fi
+  fi
+
+  if ! gum confirm --affirmative='Enable Spawn' --negative='Disable Spawn' \
+    --prompt.border=hidden \
+    "Toggle loot and infected spawn"
+  then
+    sed -i 's/HIVE_ENABLED = .*;/HIVE_ENABLED = true;/' \
+      "$dayz_path/Missions/$mission/core/CommunityOfflineClient.c"
+  else
+    sed -i 's/HIVE_ENABLED = .*;/HIVE_ENABLED = false;/' \
+      "$dayz_path/Missions/$mission/core/CommunityOfflineClient.c"
+  fi
+
+  runDayZ -filePatching -mission="./Missions/$mission" "${mods_arg:-}" \
+    -doLogs -scriptDebug=true "${args[@]}"
+}
+
+# Launch DayZ with args
+runDayZ() {
+  local args=("$@")
+
+  if pgrep -f 'DayZ.*exe' &>/dev/null; then
+    if gum confirm --prompt.align=center "$(
+      gum format \
+        '**DayZ is already running**' '' "\`Kill all existing Dayz processes?\`"
+    )"
+    then
+      pkill -f 'DayZ.*exe'
+    else
+      exit 1
+    fi
+  fi
+
+  pgrep steam &>/dev/null && steam_disown=1
+  steam -applaunch "$DAYZ_GAME_ID" -nolauncher \
+    -name "$dayz_user" "${args[@]}" &>/dev/null &
+  [ ${steam_disown:-0} = 1 ] && disown "%steam"
+  exit 0
+}
+
+argsFromServerData() {
+  local data="$1" args=("${@:2}")
+  local mods server_name server_ip server_game_port exec_args=()
+
+  # Add mods list to launch args
+  mods="$(jq -er '[.mods[] | "@\(.steamWorkshopId)"] | join(";")' <<< "$data")"
+  [ -n "$mods" ] && exec_args+=("-mod=$mods")
+
+  # Get server data
+  server_name="$(jq -er '.name' <<< "$data")"
+  server_ip="$(jq -er '.endpoint.ip' <<< "$data")"
+  server_game_port="$(jq -er '.gamePort' <<< "$data")"
+  # Set connection args
+  exec_args+=("-connect=$server_ip" "-port=$server_game_port")
+  # Set password
+  if jq -er '.password' <<< "$data"; then
+    server_password="-password=$(
+      gum input --password --prompt="Password: " --placeholder='Server password'
+    )"
+    exec_args+=("$server_password")
+  fi
+  # Append extra args
+  exec_args+=("${args[@]}")
+
+  printf '%s\n' "${exec_args[@]}"
+}
+
+createDesktopEntry() {
+  local data="$1" args=("${@:2}")
+  local server_name server_ip server_game_port launch_file
+  local base_args=() exec_args=()
+
+  # Get server data
+  server_name="$(jq -er '.name' <<< "$data")"
+  server_ip="$(jq -er '.endpoint.ip' <<< "$data")"
+  server_game_port="$(jq -er '.gamePort' <<< "$data")"
+
+  # Set base launch options
+  base_args=(steam -applaunch "$DAYZ_GAME_ID" -nolauncher -name "$dayz_user")
+  # Set extra args from server data
+  mapfile -t exec_args < <(argsFromServerData "$data" "${args[@]}")
+  # Launch file path
+  launch_file="$APPLICATIONS_DIR/dayz-cli-$server_ip-$server_game_port.desktop"
+
+  cat << DesktopEntry > "$launch_file"
+[Desktop Entry]
+Name=DayZ - $(
+  gum input --prompt="Server name: " \
+    --value="$server_name" --placeholder="$server_name"
+)
+Comment=Play DayZ on Steam ($server_name)
+Exec=${base_args[*]} ${exec_args[*]}
+Icon=steam_icon_$DAYZ_GAME_ID
+Terminal=false
+Type=Application
+Categories=Game;
+DesktopEntry
+
+  chmod +x "$launch_file"
+}
+
+getBattlemetricsURL () {
+ local ip="$1" port="$2" name="$3"
+  curl -GsL 'https://api.battlemetrics.com/servers' \
+    -d "page[size]=10" \
+    -d 'filter[game]=dayz' \
+    -d "filter[search]=$ip $name" | \
+  jq -er --arg ip "$ip" --argjson port "$port" '
+    .data[] |
+    select(.attributes.ip == $ip and .attributes.portQuery == $port) |
+    "https://www.battlemetrics.com/servers/dayz/\(.attributes.id)"
+  ' 2>/dev/null || :
+}
+
+setProfileSteamRoot() {
+  local path="${1:-}"
+  [ -z "$path" ] && path="$(
+    gum input \
+      --value="$HOME/.steam/steam" \
+      --placeholder="$HOME/.steam/steam" \
+      --prompt="Steam root installation path: "
+  )"
+  if [ -d "$path/steamapps" ]; then
+    echo "$path/steamapps"
+    jq -er --arg steam_root "$path" \
+      '. += {"steam_root": $steam_root}' "$DAYZ_PROFILE" | \
+    sponge "$DAYZ_PROFILE"
+  else
+    fail "$path is invalid Steam path"
+  fi
+}
+
+setProfileSteamLogin() {
+  steam_login="$(
+    gum input --placeholder="anonymous" --prompt="Steam login: "
+  )"
+  : "${steam_login:=anonymous}"
+
+  if [ "$steam_login" = anonymous ]; then
+    gum confirm "Attention! Anonymous cant install or update mods"
+    setConfigVar DAYZ_STEAMCMD_ENABLED false
+  else
+    runSteamClient
+    steamcmd +@ShutdownOnFailedCommand 1 +login "$steam_login" +quit
+    clear
+    setConfigVar DAYZ_STEAMCMD_ENABLED true
+  fi
+
+  jq -er --arg steam_login "$steam_login" \
+    '. += {"steam_login": $steam_login}' "$DAYZ_PROFILE" | \
+  sponge "$DAYZ_PROFILE"
+}
+
+setProfileDayzUser() {
+  if [ "${steam_login:-anonymous}" = anonymous ]; then
+    dayz_user_placeholder="${dayz_user:=survivor-$(( "$RANDOM" % 1000 + 100 ))}"
+  else
+    dayz_user_placeholder="$steam_login"
+  fi
+
+  dayz_user="$(
+    gum input --placeholder="$dayz_user_placeholder" --prompt="Dayz Player: "
+  )"
+  : "${dayz_user:=$dayz_user_placeholder}"
+  jq -er --arg dayz_user "$dayz_user" \
+    '. += {"player": $dayz_user}' "$DAYZ_PROFILE" | \
+  sponge "$DAYZ_PROFILE"
+}
+
+checkSysctl() {
+  local max_map_count=$((1024*1024))
+  local file=/etc/sysctl.d/50-dayz.conf
+
+  if [ "$(sysctl -n vm.max_map_count)" -lt $max_map_count ]; then
+    if gum confirm --prompt.align=center --negative="No, I'll do it myself" "$(
+      gum format 'For dayz to work properly, you need to set' \
+        "\`vm.max_map_count\` equal or greater than \`$max_map_count\`" \
+        '' 'To do this? Need to call sudo...'
+      )"
+    then
+      echo "vm.max_map_count=$max_map_count" | \
+        sudo tee "$file"
+      sudo sysctl -w vm.max_map_count=$max_map_count
+    else
+      gum format \
+        '## Execute this commands:' \
+        "* \`echo \"vm.max_map_count=$max_map_count\" | sudo tee \"$file\"\`" \
+        "* \`sudo sysctl -w vm.max_map_count=$max_map_count\`"
+      exit 0
+    fi
+  fi
+}
+
+removeAllLauncherInstalledMods() {
+  local i=0 mods=() before_size after_size
+  before_size="$(du -hd0 "$dayz_workshop_path")"
+  for f in "$dayz_workshop_path"/*; do
+    [ ! -f "$f/.dayz-ctl" ] && continue
+    mods+=("${f##*/} \`$(du -hd0 "$f")\`")
+    rm -rf -- "$f"
+    ((i+=1))
+  done
+  after_size="$(du -hd0 "$dayz_workshop_path")"
+  if [ "$i" -gt 0 ]; then
+    removeAllModLinks
+    gum format "$(printf '* %s\n' "${mods[@]}")" \
+      "Removed \`$i\` mods ($before_size/$after_size)"
+  else
+    echo "Nothing to do"
+  fi
+}
+
+removeAllModLinks() {
+  local before_size after_size i=0
+  for f in "$dayz_path"/@*; do
+    [ -h "$f" ] && rm -f -- "$f" && ((i+=1))
+  done
+  if [ "$i" -gt 0 ]; then
+    gum format "Removed \`$i\` mod links"
+  else
+    echo "Nothing to do"
+  fi
+}
+
+openScreen() {
+  [ ! ${-/x/} = $- ] && return
+  printf '\033[?1049h'
+  printf '\033]0;DayZ Launcher\007'
+  export _screen=1
+}
+
+closeScreen() {
+  [ ! ${-/x/} = $- ] && return
+  [ -z "${_screen:-}" ] && return
+  [ "${_screen:-0}" -eq 0 ] && return
+  printf '\033[?1049l'
+  export _screen=0
+}
+
+export -f fzfPreview
+export DAYZ_SERVER_DB
+
+## Main
+## ----
+
+# TODO run from Steam
+# if [ "${2:-}" = SteamLaunch ] && [ "${3:-}" = "AppId=$DAYZ_GAME_ID" ]; then
+#   # xterm or https://github.com/i3/i3/blob/next/i3-sensible-terminal
+#   exec xterm -e "/home/woozymasta/git/dayz-cli-launcher/dayz-ctl" \
+#     -T 'DayZ CTL Launcher'
+# fi
+
+# use env config
+# shellcheck disable=SC1090
+[ -f "$DAYZ_CONFIG_FILE" ] && . "$DAYZ_CONFIG_FILE"
+
+# Set terminal screen
+openScreen && trap closeScreen EXIT
+
+# Check dependecies
+for cmd in "${!dependencies[@]}"; do
+  command -v "$cmd" &>/dev/null ||
+  fail "Reqired tool <$cmd> not installed" \
+    "Install it first ${dependencies[$cmd]}"
+done
+
+# First launch
+[ ! -d "$DAYZ_CTL_DIR" ] && mkdir -p "$DAYZ_CTL_DIR"
+
+
+# Check profile file exist not empty
+if [ ! -s "$DAYZ_PROFILE" ]; then
+  jq -er &>/dev/null < <(baseProfile) || fail "baseProfile() is broken"
+  touch "$DAYZ_PROFILE"
+  jq -ner --argjson base "$(baseProfile)" \
+    '$base' "$DAYZ_PROFILE" | sponge "$DAYZ_PROFILE"
+  if gum confirm "$(
+    gum format \
+      "**Do you want to use SteamCMD to install and update DayZ mods?**" \
+      '* Using SteamCMD you will not subscribe to mods in the Workshop' \
+      '* Mods will be installed and updated automatically with this launcher' \
+      '* Steam will not know anything about your installed mods' '' \
+      '_See the project documentation for more details_' \
+      'https://github.com/WoozyMasta/dayz-ctl'
+  )"
+  then
+    setConfigVar DAYZ_STEAMCMD_ENABLED true
+  else
+    setConfigVar DAYZ_STEAMCMD_ENABLED false
+  fi
+fi
+
+# Check config json is valid
+if ! jq -er 'has("version")' "$DAYZ_PROFILE" &>/dev/null; then
+  gum confirm --prompt.align=center --prompt.border=rounded \
+    --prompt.border-foreground=1 --prompt.padding="0 2" "$(
+    gum format "**Configuration file is corrupted**" "\`$DAYZ_PROFILE\`" '' \
+      'Do you want to recreate the config file?' \
+      '_Beware, you will lose all current configuration_'
+  )"
+  rm --force -- "$DAYZ_PROFILE"
+  exit 0
+fi
+
+checkSysctl
+
+# Set Steam, Dayz and DayZ WorkShop dir paths
+if [ -d "$HOME/.steam/steam/steamapps" ]; then
+  steam_root="$HOME/.steam/steam/steamapps"
+elif [ -d "$HOME/.local/share/Steam/steamapps" ]; then
+  steam_root="$HOME/.local/share/Steam/steamapps"
+elif [ -d "$HOME/.var/app/com.valvesoftware.Steam/data/Steam/steamapps" ]; then
+  steam_root="$HOME/.var/app/com.valvesoftware.Steam/data/Steam/steamapps"
+else
+  steam_root_input="$(jq -er '.steam_root // ""' "$DAYZ_PROFILE" 2>/dev/null)"
+  steam_root=$(setProfileSteamRoot "$steam_root_input")
+fi
+[ -d "$steam_root/common/DayZ" ] || fail "DayZ not installed or cant find it"
+export dayz_path="$steam_root/common/DayZ"
+export dayz_workshop_path="$steam_root/workshop/content/$DAYZ_GAME_ID"
+
+# Get Steam profile
+if [ $DAYZ_STEAMCMD_ENABLED = true ]; then
+  steam_login="$(jq -er '.steam_login // ""' "$DAYZ_PROFILE" 2>/dev/null)"
+  if [ -z "$steam_login" ]; then
+    setProfileSteamLogin
+  fi
+fi
+
+# Get user profiles
+dayz_user="$(jq -er '.player // ""' "$DAYZ_PROFILE" 2>/dev/null)"
+[ -z "$dayz_user" ] && setProfileDayzUser
+export dayz_user
+
+# update data in $DAYZ_MODS_DB (dayz-mods.json)
+updateModsDB &
+# update data in $DAYZ_SERVER_DB (dayz-servers.json)
+checkServersList &
+wait
+
+# Print news
+getDayzNews
+
+# Print stats
+jq -er --arg login "${steam_login:-anonymous}" --arg player "$dayz_user" \
+  --argjson steamcmd "${DAYZ_STEAMCMD_ENABLED,,}" \
+'"\(if $steamcmd then "- **Steam Login**:\t`\($login)`" else "" end)
+- **Player Name**:\t`\($player)`
+- **Players online**:\t`\(.playersOnline)`
+- **Servers online**:\t`\(.result | length)`"
+' "$DAYZ_SERVER_DB" | gum format
+
+# Get game launch options
+mapfile -t dayz_launch_options < <(getDayZLaunchOptions)
+
+main_menu_options=('All Servers' 'Filter Servers' 'Filter Servers by Map')
+[ "$(jq -er '.favorites | length' "$DAYZ_PROFILE")" -gt 0 ] &&
+  main_menu_options+=('Favorite Servers')
+[ "$(jq -er '.history | length' "$DAYZ_PROFILE")" -gt 0 ] &&
+  main_menu_options+=('Recently Played')
+main_menu_options+=(
+  'Direct Connect'
+  'Launch Game'
+  'Play Offline'
+  'DayZ News'
+  'Config'
+)
+
+# Main selection window
+while read -r option; do
+  case $option in
+    'All Servers')
+      _id="$(fzfServers '')"
+      server_data="$(getServerData "$_id")";;
+    'Filter Servers')
+      _id=$(fzfServers "$(applyServerFiltres)")
+      server_data="$(getServerData "$_id")";;
+    'Filter Servers by Map')
+      _id=$(fzfServers "$(applyServerMapFiltres) $(applyServerFiltres)")
+      server_data="$(getServerData "$_id")";;
+    'Favorite Servers')
+      _responce="$(getFavoriteServers favorites)"
+      _id=$(cut -f1 <<< "$_responce")
+      server_data="$(getServerData "$_id")"
+      server_resque_name=$(cut -f2 <<< "$_responce");;
+    'Recently Played')
+      _responce="$(getFavoriteServers history)"
+      _id=$(cut -f1 <<< "$_responce")
+      server_data="$(getServerData "$_id")"
+      server_resque_name=$(cut -f2 <<< "$_responce");;
+    'Direct Connect')
+      server_data="$(directConnect)";;
+    'Launch Game')
+      runDayZ "${dayz_launch_options[@]}"; exit 0;;
+    'Play Offline')
+      runDayZOffline "${dayz_launch_options[@]}"; exit 0;;
+    'DayZ News')
+      closeScreen; getDayzNews "$(($(tput lines)/2-3))"; exit 0;;
+    'Config')
+      config_menu_options=('Game Launch Options' 'Change Steam Root Dir')
+      if [ $DAYZ_STEAMCMD_ENABLED = true ]; then
+        config_menu_options+=('Change Steam Login' 'Disable SteamCMD')
+      else
+        config_menu_options+=('Set Steam Login and enable SteamCMD')
+      fi
+      config_menu_options+=('Change Player Name')
+      [ "$(jq -er '.mods | length' "$DAYZ_MODS_DB")" -gt 0 ] &&
+        config_menu_options+=(
+          'Installed Mod Info'
+          'Remove All Mods Without Subscription'
+          'Remove All Mod Links'
+        )
+      config_menu_options+=('Update servers list' 'About')
+      while read -r option; do
+        case $option in
+          'Game Launch Options')
+            setDayZLaunchOptions; exit 0;;
+          'Change Steam Root Dir')
+            setProfileSteamRoot; exit 0;;
+          'Disable SteamCMD')
+            setConfigVar DAYZ_STEAMCMD_ENABLED false; exit 0;;
+          'Set Steam Login and enable SteamCMD')
+            setProfileSteamLogin; exit 0;;
+          'Change Steam Login')
+            setProfileSteamLogin; exit 0;;
+          'Change Player Name')
+            setProfileDayzUser; exit 0;;
+          'Installed Mod Info')
+            closeScreen; printInstalledModsInfo | gum format; exit 0;;
+          'Update servers list')
+            gum confirm; requestServersList; exit 0;;
+          'Remove All Mods Without Subscription')
+            closeScreen
+            removeAllLauncherInstalledMods; exit 0;;
+          'Remove All Mod Links')
+            closeScreen
+            removeAllModLinks; exit 0;;
+          'About')
+            closeScreen
+            echo
+            gum format "## DayZ CTL $DAYZ_CTL_VERSION" \
+              "* Game ID:     \`$DAYZ_GAME_ID\`" \
+              "* WorkDir:     \`$DAYZ_CTL_DIR\`" \
+              "* SteamDir:    \`$steam_root\`" \
+              "* Config:      \`$DAYZ_CONFIG_FILE\`" \
+              "* Profile DB:  \`$DAYZ_PROFILE\`" \
+              "* Servers DB:  \`$DAYZ_SERVER_DB\` [TTL $DAYZ_SERVER_DB_TTL s]" \
+              "* New DB:      \`$DAYZ_NEWS_DB\` [TTL $DAYZ_NEWS_DB_TTL s]" \
+              "* Mods DB:     \`$DAYZ_MODS_DB\`" \
+              "* DayZ API:    \`$DAYZ_API\`" \
+              "* SteamCMD:    \`$DAYZ_STEAMCMD_ENABLED\`" '' \
+              "Thanks to https://dayzsalauncher.com for the API" \
+              "[$DAYZ_CTL_NAME project](https://github.com/WoozyMasta/dayz-ctl)" \
+              "WoozyMasta <me@woozymasta.ru>"
+            exit 0;;
+          *) fail "Unknown option $1";;
+        esac
+      done < <(printf '%s\n' "${config_menu_options[@]}" | gum choose);;
+    *) fail "Unknown option $1"; exit 0;;
+  esac
+done < <(printf '%s\n' "${main_menu_options[@]}" | gum choose --height=11)
+
+closeScreen
+# Exit if not data present
+[ -z "${server_data:-}" ] && [ -z "${server_resque_name:-}" ] && exit 0
+
+choose_play_options=()
+# Get basic server info and add play option
+if [ -n "${server_data:-}" ]; then
+  server_name="$(jq -er '.name' <<< "$server_data")"
+  server_ip="$(jq -er '.endpoint.ip' <<< "$server_data")"
+  server_query_port="$(jq -er '.endpoint.port' <<< "$server_data")"
+  server_game_port="$(jq -er '.gamePort' <<< "$server_data")"
+  desktop_entry_filename="dayz-cli-$server_ip-$server_game_port.desktop"
+  [ -z "${server_name:-}" ] && exit 0
+  choose_play_options+=('Play')
+
+  # Add option for manage favorits
+  if checkFavoritsPresent "$server_ip" "$server_query_port"; then
+    choose_play_options+=('Remove from favorites')
+  else
+    choose_play_options+=('Add to favorites')
+  fi
+
+  # Add option for manage Desktop Entry
+  if [ -f "$APPLICATIONS_DIR/$desktop_entry_filename" ]; then
+    choose_play_options+=('Update Desktop Entry' 'Delete Desktop Entry')
+  else
+    choose_play_options+=('Create Desktop Entry')
+  fi
+else
+  choose_play_options+=('Remove from favorites')
+fi
+
+# Launch window for selected server
+while read -r option; do
+  case $option in
+    'Add to favorites')
+      addFavoriteServer "$server_ip" "$server_query_port" "$server_name";;
+    'Remove from favorites')
+      if [ -n "${server_ip:-}" ]; then
+        deleteFavoriteServer "$server_ip" "$server_query_port"
+      else
+        deleteFavoriteServerOffline "${server_resque_name##🔴 }"
+      fi;;
+    'Create Desktop Entry' | 'Update Desktop Entry')
+      createDesktopEntry "$server_data" "${dayz_launch_options[@]}";;
+    'Delete Desktop Entry')
+      rm -f "$APPLICATIONS_DIR/$desktop_entry_filename";;
+    'Play')
+      gum format "Connect to \`$server_name\` server" \
+        "* $server_ip:$server_game_port" \
+        "$(getBattlemetricsURL "$server_ip" "$server_query_port" "$server_name")"
+
+      getNotInstalledMods "$server_data"
+
+      mapfile -t exec_args < <(
+        argsFromServerData "$server_data" "${dayz_launch_options[@]}"
+      )
+      addHistoryServer "$server_ip" "$server_query_port" "$server_name"
+      runDayZ "${exec_args[@]}"
+      exit 0;;
+    *) fail "Unknown option $1";;
+  esac
+done < <(printf '%s\n' "${choose_play_options[@]}" | gum choose --no-limit)
+
+exit 0
+
+# TODO Flatpak
+# flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam-wrapper com.valvesoftware.Steam "${@}"
+
+# TODO args for ctl
+
+# TODO mods db add flag for steamcmd installed mods and show it in info
+
+# TODO emoji disable option
+# ▫️ 🟩 ⬛ 🕒   ❔ 🟢  🔴 🌙    ☀️  🔒  🔓 ✅ ❌
+# -  +     time ?  yes no night day yes no ok no
