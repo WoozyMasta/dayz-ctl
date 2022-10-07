@@ -55,7 +55,7 @@
 Выполните это:
 
 ```bash
-curl -sSfL https://raw.githubusercontent.com/WoozyMasta/dayz-ctl/master/install | bash 
+curl -sSfL https://raw.githubusercontent.com/WoozyMasta/dayz-ctl/master/install | bash
 ```
 
 ## Ручная установка

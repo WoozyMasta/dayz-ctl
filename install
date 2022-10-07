@@ -55,12 +55,12 @@ ghInstall() {
     if [ "$file" == "*.gz" ]; then
       tempfile=$(mktemp "$cmd.XXXXXXXX.tmp")
       trap 'rm -rf -- "$tempfile"' EXIT
-      curl -sSfLo "$tempfile" "$release_url"|| \
+      curl -#fLo "$tempfile" "$release_url"|| \
         fail "Can't download $cmd from $project"
       tar xz "$tempfile" -C "$bin_path" "$cmd"
       rm -rf -- "$tempfile"
     else
-      curl -sSfLo "$bin_path/$cmd" "$release_url"
+      curl -#fLo "$bin_path/$cmd" "$release_url"
     fi
     chmod +x "$bin_path/$cmd"
     installed_packages+=("$cmd")
@@ -145,9 +145,9 @@ if ! command -v steamcmd &>/dev/null; then
   mkdir -p "$DAYZ_CTL_DIR/steamcmd"
   tempfile=$(mktemp "steamcmd.tar.gz.XXXXXXXX.tmp")
   trap 'rm -rf -- "$tempfile"' EXIT
-  curl -sSfLo "$tempfile" \
+  curl -#fLo "$tempfile" \
     http://media.steampowered.com/client/installer/steamcmd_linux.tar.gz | \
-    tar xz -C "$DAYZ_CTL_DIR/steamcmd"
+    tar xz "$tempfile" -C "$DAYZ_CTL_DIR/steamcmd"
   [ ! -h "$bin_path/steamcmd" ] && \
     ln -s "$DAYZ_CTL_DIR/steamcmd/steamcmd.sh" "$bin_path/steamcmd"
   installed_packages+=(steamcmd)
@@ -161,7 +161,7 @@ ghInstall fzf junegunn $fzf_version/fzf-$fzf_version-linux_amd64.tar.gz
 ghInstall gum charmbracelet v$gum_version/gum_${gum_version}_linux_x86_64.tar.gz
 
 # Install dayz-ctl
-curl -sSfLo "$bin_path/dayz-ctl" "$raw_url/$DAYZ_CTL_VERSION/dayz-ctl" ||
+curl -#fLo "$bin_path/dayz-ctl" "$raw_url/$DAYZ_CTL_VERSION/dayz-ctl" ||
   fail "Can't download dayz-ctl from https://github.com/WoozyMasta/dayz-ctl"
 chmod +x "$bin_path/dayz-ctl"
 
@@ -176,7 +176,7 @@ if [ -d "$USER_APPLICATIONS_DIR" ]; then
   [ -d "$USER_ICONS_DIR" ] &&
     icon_path="$USER_ICONS_DIR/dayz-ctl.svg" && icon=dayz-ctl
 
-  curl -sSfLo "${icon_path:-$bin_path/dayz-ctl.svg}" \
+  curl -#fLo "${icon_path:-$bin_path/dayz-ctl.svg}" \
     "$raw_url/$DAYZ_CTL_VERSION/extra/dayz-ctl.svg" ||
     fail "Can't download dayz-ctl from https://github.com/WoozyMasta/dayz-ctl"
 
