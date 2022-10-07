@@ -57,7 +57,7 @@ ghInstall() {
       trap 'rm -rf -- "$tempfile"' EXIT
       curl -#fLo "$tempfile" "$release_url"|| \
         fail "Can't download $cmd from $project"
-      tar xz "$tempfile" -C "$bin_path" "$cmd"
+      tar fxz "$tempfile" -C "$bin_path" "$cmd"
       rm -rf -- "$tempfile"
     else
       curl -#fLo "$bin_path/$cmd" "$release_url"
@@ -147,7 +147,7 @@ if ! command -v steamcmd &>/dev/null; then
   trap 'rm -rf -- "$tempfile"' EXIT
   curl -#fLo "$tempfile" \
     http://media.steampowered.com/client/installer/steamcmd_linux.tar.gz
-  tar xz "$tempfile" -C "$DAYZ_CTL_DIR/steamcmd"
+  tar fxz "$tempfile" -C "$DAYZ_CTL_DIR/steamcmd"
   [ ! -h "$bin_path/steamcmd" ] && \
     ln -s "$DAYZ_CTL_DIR/steamcmd/steamcmd.sh" "$bin_path/steamcmd"
   installed_packages+=(steamcmd)
