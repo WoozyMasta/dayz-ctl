@@ -30,13 +30,13 @@ Key Features:
 * Provides a link with detailed server information to [battlemetrics][]
 
 <center>
-<div style="text-align:center;width:80%">
+<div style="text-align:center">
 
-![](extra/2.jpg)
+![](extra/dayz-ctl.gif)
 
 | ![](extra/1.jpg) | ![](extra/3.jpg)  | ![](extra/4.jpg)  |
 | ---------------- | ----------------- | ----------------- |
-| ![](extra/5.jpg) | ![](extra/6.jpg)  | ![](extra/11.jpg) |
+| ![](extra/2.jpg) | ![](extra/6.jpg)  | ![](extra/11.jpg) |
 | ![](extra/8.jpg) | ![](extra/9.jpg)  | ![](extra/10.jpg) |
 | ![](extra/7.jpg) | ![](extra/12.jpg) | ![](extra/13.jpg) |
 </div>
