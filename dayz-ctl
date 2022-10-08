@@ -22,6 +22,7 @@ set -euo pipefail
 : "${DAYZ_NEWS_DB_TTL:=3600}" # TTL in seconds
 : "${DAYZ_MODS_DB:=$DAYZ_CTL_DIR/mods.json}"
 : "${DAYZ_PROFILE:=$DAYZ_CTL_DIR/profile.json}"
+: "${DAYZ_HISTORY_SIZE:=10}"
 : "${DAYZ_FZF_HISTORY:=$DAYZ_CTL_DIR/.$DAYZ_CTL_NAME-history}"
 : "${DAYZ_USERAGENT:="$DAYZ_CTL_NAME"}"
 : "${DAYZ_API:=https://dayzsalauncher.com/api/v1}"
@@ -159,7 +160,7 @@ setConfigVar() {
 sponge() {
   local tempfile file="$1"
   tempfile=$(
-    mktemp "${TEMP_DIR_PATH:-/tmp}/$(basename "$file").XXXXXXXX.tmp"
+    mktemp "${TEMP_DIR_PATH:-/tmp}/$(basename "$file").tmp.XXXXXXXX"
   )
   trap 'rm -rf -- "$tempfile"' ERR
   cat >"$tempfile"
@@ -402,7 +403,7 @@ fzfPreview() {
                           (.mods|length|tostring) + "]" else "🔴" end)
   Version:            | \(.version)"' <<< "$server_data" | gum format
 
-
+  echo
   server_ip="$(jq -er '.endpoint.ip' <<< "$server_data")"
   gum format <<- net_stats
   ## Networking:
@@ -415,6 +416,7 @@ net_stats
 
   mods_count=$(jq -er '.mods | length' <<< "$server_data" || echo 0)
   if [ "$mods_count" -gt 0 ]; then
+    echo
     {
       printf '%s\n\n' "## Mods [$mods_count]:"
       while IFS=$'\t' read -r name id; do
@@ -647,7 +649,7 @@ printInstalledModsInfo() {
 
 # Add last played server to profile
 addHistoryServer() {
-  local ip="$1" port="$2" name="$3" ts limit=10
+  local ip="$1" port="$2" name="$3" ts limit="${DAYZ_HISTORY_SIZE:-10}"
   ts="$(date +%s)"
 
   if jq -er --arg ip "$ip" --argjson port "$port" \
@@ -1066,7 +1068,7 @@ setProfileSteamLogin() {
 
 setProfileDayzUser() {
   if [ "${steam_login:-anonymous}" = anonymous ]; then
-    dayz_user_placeholder="${dayz_user:=survivor-$(( "$RANDOM" % 1000 + 100 ))}"
+    dayz_user_placeholder="${dayz_user:=survivor-$(( RANDOM % 1000 + 100 ))}"
   else
     dayz_user_placeholder="$steam_login"
   fi
@@ -1084,7 +1086,7 @@ checkSysctl() {
   local max_map_count=$((1024*1024))
   local file=/etc/sysctl.d/50-dayz.conf
 
-  if [ "$(sysctl -n vm.max_map_count)" -lt $max_map_count ]; then
+  if [ "$(cat /proc/sys/vm/max_map_count)" -lt $max_map_count ]; then
     if gum confirm --prompt.align=center --negative="No, I'll do it myself" "$(
       gum format 'For dayz to work properly, you need to set' \
         "\`vm.max_map_count\` equal or greater than \`$max_map_count\`" \
@@ -1353,18 +1355,19 @@ while read -r option; do
             closeScreen
             echo
             gum format "## DayZ CTL $DAYZ_CTL_VERSION" \
-              "* Game ID:     \`$DAYZ_GAME_ID\`" \
-              "* WorkDir:     \`$DAYZ_CTL_DIR\`" \
-              "* SteamDir:    \`$steam_root\`" \
-              "* Config:      \`$DAYZ_CONFIG_FILE\`" \
-              "* Profile DB:  \`$DAYZ_PROFILE\`" \
-              "* Servers DB:  \`$DAYZ_SERVER_DB\` [TTL $DAYZ_SERVER_DB_TTL s]" \
-              "* New DB:      \`$DAYZ_NEWS_DB\` [TTL $DAYZ_NEWS_DB_TTL s]" \
-              "* Mods DB:     \`$DAYZ_MODS_DB\`" \
-              "* DayZ API:    \`$DAYZ_API\`" \
-              "* SteamCMD:    \`$DAYZ_STEAMCMD_ENABLED\`" '' \
+              "* Game ID:      \`$DAYZ_GAME_ID\`" \
+              "* WorkDir:      \`$DAYZ_CTL_DIR\`" \
+              "* SteamDir:     \`$steam_root\`" \
+              "* Config:       \`$DAYZ_CONFIG_FILE\`" \
+              "* History size: \`$DAYZ_HISTORY_SIZE\`" \
+              "* Profile DB:   \`$DAYZ_PROFILE\`" \
+              "* Servers DB:   \`$DAYZ_SERVER_DB\` [TTL $DAYZ_SERVER_DB_TTL s]"\
+              "* New DB:       \`$DAYZ_NEWS_DB\` [TTL $DAYZ_NEWS_DB_TTL s]" \
+              "* Mods DB:      \`$DAYZ_MODS_DB\`" \
+              "* DayZ API:     \`$DAYZ_API\`" \
+              "* SteamCMD:     \`$DAYZ_STEAMCMD_ENABLED\`" '' \
               "Thanks to https://dayzsalauncher.com for the API" \
-              "[$DAYZ_CTL_NAME project](https://github.com/WoozyMasta/dayz-ctl)" \
+              "[$DAYZ_CTL_NAME project](https://github.com/WoozyMasta/dayz-ctl)"\
               "WoozyMasta <me@woozymasta.ru>"
             exit 0;;
           *) fail "Unknown option $1";;
@@ -1445,9 +1448,7 @@ exit 0
 # TODO Flatpak
 # flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam-wrapper com.valvesoftware.Steam "${@}"
 
-# TODO args for ctl
-
-# TODO mods db add flag for steamcmd installed mods and show it in info
+# TODO add some args for usage
 
 # TODO emoji disable option
 # ▫️ 🟩 ⬛ 🕒   ❔ 🟢  🔴 🌙    ☀️  🔒  🔓 ✅ ❌

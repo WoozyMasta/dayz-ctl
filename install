@@ -21,23 +21,26 @@ raw_url=https://raw.githubusercontent.com/WoozyMasta/dayz-ctl
 packages_data_fresh=0
 
 declare -a installed_packages=()
-declare -a os_releases=(
-  debian_version
-  redhat-release
-  arch-release
-  alpine-release
-  gentoo-release
-  SuSE-release
+declare -A package_manageers=(
+  [apt]=/etc/apt/sources.list
+  [yum]=/etc/yum.conf
+  [dnf]=/etc/dnf/dnf.conf
+  [pacman]=/etc/pacman.conf
+  [apk]=/etc/apk/repositories
+  [zypper]=/etc/zypp/zypper.conf
 )
 declare -A packages=(
+  [tput]=ncurses
+  [tar]=tar
+  [gzip]=gzip
+  [who]=coreutils # missed who, logname or chcon is inidicate coreutils not installed
+  [bash]=bash
   [ping]=iputils-ping
-  [geoiplookup]=geoip-bin
+  [geoiplookup]=geoip
   [whois]=whois
   [curl]=curl
   [grep]=grep
   [awk]=gawk
-  # [steam]=steam
-  # [steamcmd]=steamcmd
 )
 
 fail() {
@@ -53,7 +56,7 @@ ghInstall() {
   if ! command -v "$cmd" &>/dev/null; then
     printf '%s\t(%s)\n' "Install: $cmd" "$project"
     if [[ "$file" == *.gz ]]; then
-      tempfile=$(mktemp "$cmd.XXXXXXXX.tmp")
+      tempfile=$(mktemp "$cmd.tmp.XXXXXXXX")
       trap 'rm -rf -- "$tempfile"' EXIT
       curl -#fLo "$tempfile" "$release_url"|| \
         fail "Can't download $cmd from $project"
@@ -66,6 +69,15 @@ ghInstall() {
     installed_packages+=("$cmd")
   fi
 }
+
+# Create fake steam for test
+if [ "${TEST_MODE,,}" = true ]; then
+  # shellcheck disable=SC2016
+  printf '%s\n' '#!/usr/bin/env bash' \
+    'printf '\''Steam: %s\n'\'' "${@}"' > /bin/steam
+  chmod +x /bin/steam
+  mkdir -p "$HOME/.steam/steam/steamapps/common/DayZ"
+fi
 
 # Create working dir
 mkdir -p "$DAYZ_CTL_DIR"
@@ -91,28 +103,30 @@ else
 fi
 
 # Set package manager command for install
-for file in "${os_releases[@]}"; do
-  [ ! -f "/etc/$file" ] && continue
-  case $file in
-    'debian_version')
+for manger in "${!package_manageers[@]}"; do
+  [ ! -f "${package_manageers[$manger]}" ] && continue
+  case $manger in
+    'apt')
       package_update="${package_su:-} apt update"
-      package_manager="${package_su:-} apt install -y";;
-    'redhat-release')
-      package_update="${package_su:-} yum update"
-      package_manager="${package_su:-} yum install -y";;
-    'arch-release')
-      package_manager="${package_su:-} pacman -Sy";;
-    'alpine-release')
+      package_manager="${package_su:-} apt install -y"
+      packages[geoiplookup]=geoip-bin;;
+    'yum'|'dnf')
+      package_update="${package_su:-} $manger makecache"
+      package_manager="${package_su:-} $manger install -y"
+      packages[ping]=iputils;;
+    'pacman')
+      package_manager="${package_su:-} pacman -S --noconfirm";;
+    'apk')
       package_manager="${package_su:-} apk add";;
-    'gentoo-release')
-      package_manager="${package_su:-} emerge -av";;
-    'SuSE-release')
-      package_manager="${package_su:-} zypper install";;
+    'zypper')
+      package_manager="${package_su:-} zypper -n install"
+      packages[geoiplookup]=GeoIP
+      packages[ping]=iputils;;
   esac
 done
 
 # Check Steam installed
-if ! command -v steam &>/dev/null && [ "$TEST_MODE" = false ]; then
+if ! command -v steam &>/dev/null && [ "${TEST_MODE,,}" = false ]; then
   [ "${packages_data_fresh:=0}" -eq 0 ] &&
     ${package_update:-:} && ((packages_data_fresh+=1))
   printf '%s\t(%s)\n' 'Install: Steam' 'https://store.steampowered.com'
@@ -146,7 +160,7 @@ if ! command -v steamcmd &>/dev/null; then
   printf '%s\t(%s)\n' 'Install: SteamCMD' \
     'https://developer.valvesoftware.com/wiki/SteamCMD'
   mkdir -p "$DAYZ_CTL_DIR/steamcmd"
-  tempfile=$(mktemp "steamcmd.tar.gz.XXXXXXXX.tmp")
+  tempfile=$(mktemp "steamcmd.tar.gz.tmp.XXXXXXXX")
   trap 'rm -rf -- "$tempfile"' EXIT
   curl -#fLo "$tempfile" \
     http://media.steampowered.com/client/installer/steamcmd_linux.tar.gz
