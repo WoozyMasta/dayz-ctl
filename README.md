@@ -76,6 +76,8 @@ the mods for which you have a subscription.
 
 ## Installation
 
+### With installer
+
 For ease of installation, there is a small script that will do everything
 for you (at least try to do it)
 
@@ -85,7 +87,7 @@ Execute this:
 curl -sSfL https://raw.githubusercontent.com/WoozyMasta/dayz-ctl/master/install | bash
 ```
 
-## Manual installation
+### Manual installation
 
 For the launcher to work, you need to make sure that you have all the
 dependencies installed:
@@ -125,6 +127,30 @@ curl -sSfL -o ~/.local/bin/dayz-ctl \
 chmod +x ~/.local/bin/dayz-ctl
 # and run
 dayz-ctl
+```
+
+### Emoji
+
+Emojis can be used to properly display elements, you may need to install them,
+for example, you can use the [Noto][] font from Google.
+
+Below is a list with the package name for different distributions:
+
+* `fonts-noto-color-emoji` - debian/ubuntu
+* `google-noto-emoji-color-fonts` - centos
+* `google-noto-emoji-fonts` - fedora
+* `noto-fonts-emoji` - arch
+* `font-noto-emoji` - alpine
+* `noto-coloremoji-fonts` - suse
+
+Or if you don't like emoji or can't use them for some reason, you can apply
+a patch to replace them with strings:
+
+```bash
+sed -e 's/▫️/•/g' -e 's/🟩/✕/g' -e 's/⬛/ /g' -e 's/🕒/time/g' -e 's/❔/?/g' \
+  -e 's/🟢/ok/g' -e 's/🔴/no/g' -e 's/🌙/night/g' -e 's/☀️/day/g' \
+  -e 's/🔒/yes/g' -e 's/🔓/no/g' -e 's/✅/ok/g' -e 's/❌/no/g' \
+  -i "$(which dayz-ctl)"
 ```
 
 ## Tested distros
@@ -238,6 +264,7 @@ Frame rate limit `DXVK_FRAME_RATE=0`
 [DayZCommunityOfflineMode]: https://github.com/Arkensor/DayZCommunityOfflineMode
 [Steam]: https://store.steampowered.com/about/
 [Proton]: https://github.com/ValveSoftware/Proton
+[Noto]: https://fonts.google.com/noto
 
 <!--
 DayZ DayZSA dayzstandalone dayz standalone linux nix proton steam
