@@ -127,9 +127,25 @@ chmod +x ~/.local/bin/dayz-ctl
 dayz-ctl
 ```
 
+## Tested distros
+
+* 🟢 Debian bookworm
+* 🟢 Debian bullseye
+* 🟢 Debian buster
+* 🟢 Ubuntu 18.04
+* 🟢 Ubuntu 20.04
+* 🟢 Ubuntu 22.04
+* 🟢 Fedora latest
+* 🟡 Centos 7 (small bugs)
+* 🟡 Centos stream9 (small bugs)
+* 🟢 Alpine latest
+* 🟢 Alpine edge
+* 🟢 Archlinux
+* 🟡 Opensuse leap (small bugs)
+
 ## Other
 
-###Steam
+### Steam
 
 It is better to remove all DayZ launch options in Steam and manage them from
 the launcher or vice versa. Since the keys can be duplicated and this can

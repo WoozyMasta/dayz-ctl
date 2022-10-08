@@ -127,6 +127,22 @@ chmod +x ~/.local/bin/dayz-ctl
 dayz-ctl
 ```
 
+## Проверялось в дистрибутивах
+
+* 🟢 Debian bookworm
+* 🟢 Debian bullseye
+* 🟢 Debian buster
+* 🟢 Ubuntu 18.04
+* 🟢 Ubuntu 20.04
+* 🟢 Ubuntu 22.04
+* 🟢 Fedora latest
+* 🟡 Centos 7 (small bugs)
+* 🟡 Centos stream9 (small bugs)
+* 🟢 Alpine latest
+* 🟢 Alpine edge
+* 🟢 Archlinux
+* 🟡 Opensuse leap (small bugs)
+
 ## Прочее
 
 ### Steam
