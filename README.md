@@ -1,22 +1,33 @@
 # DayZ Command Line Launcher
 
-Это экспериментальный лаунчер (обозреватель серверов и средство запуска) [DayZ][] в [Steam][221100] [Proton][] для Linux.
+This is an experimental launcher (server explorer and launcher) [DayZ][] on
+[Steam][221100] [Proton][] for Linux.
 
-![](extra/dayz-ctl-logo.svg)
+> This document is available in languages: [eng 🇬🇧][], [ua 🇺🇦][], [rus 🇷🇺][]
 
-На момент реализации этого проекта [Bohemia Interactive][] всё еще не смогла сделать рабочий лаунчер для игры, который мог бы корректно устанавливать модификации и подключатся к игровым серверам. По этой причине появился этот проект.
+![logo][]
 
-Основные особенности:
+At the time of this project, [Bohemia Interactive][] was still unable to
+make a working launcher for the game that could correctly install
+modifications and connect to game servers. That is why this project was
+born.
 
-* Обозреватель серверов с информацией о каждом сервере
-* Нечеткий поиск в обозревателе серверов на базе [fzf][]
-* Автоматическая установка модов (как опция)
-* Широкий набор фильтров для поиска серверов (карта, время суток, модификации, количество игроков, от первого лица, пароль и т.п.)
-* Дополнительная информация в виде страны расположения (используя geoip базу) и ping для каждого сервера
-* Список избранного, история последних 10 игр и создание ярлыков быстрого запуска для подключения к серверам
-* Оффлайн режим [DayZCommunityOfflineMode][] с автоматической установкой, обновлением и возможностью выбора модификаций
-* Меню конфигурации с параметрами запуска игры, настройками лаунчера, управлением и статистикой по модам
-* Предоставляет ссылку с подробной информацией о сервере на [battlemetrics][]
+Key Features:
+
+* Server Explorer with information about each server
+* Fuzzy search in Server Explorer based on [fzf][]
+* Automatic installation of mods (as an option)
+* A wide range of filters for searching servers (map, time of day,
+  modifications, number of players, first person, password, etc.)
+* Additional information in the form of country of location (using geoip
+  base) and ping for each server
+* Favorites list, last 10 games history and creation of quick launch
+  shortcuts to connect to servers
+* Offline mode [DayZCommunityOfflineMode][] with automatic installation,
+  updates and the ability to select modifications
+* Configuration menu with game launch options, launcher settings, mod
+  controls and statistics
+* Provides a link with detailed server information to [battlemetrics][]
 
 <center>
 <div style="text-align:center;width:80%">
@@ -31,56 +42,71 @@
 </div>
 </center>
 
-Отдельное спасибо [dayz-linux-cli-launcher][] за идею и [dayzsalauncher][] за API.
+Special thanks to [dayz-linux-cli-launcher][] for the idea and
+[dayzsalauncher][] for the API.
 
-## Особенности использования SteamCMD
+## Features of using SteamCMD
 
-Имеется два режима работы лаунчера с использованием SteamCMD для управления модами и без него в ручном режиме.
+There are two modes of operation of the launcher with and without using
+SteamCMD to manage mods in manual mode.
 
-Вы можете комбинировать оба подхода, к примеру подписываться на те модификации которые вам точно нужны будут в будущем переходя по ссылке, а наличие обновлений проверять или принудительно обновлять моды при помощи лаунчера. Также вы можете не подписываться на "сомнительные 50 модов" очередного сервера и с легкостью удалить их одним действием из лаунчера, при этом сохранив все моды на которые имеется подписка.
+You can combine both approaches, for example, subscribe to those
+modifications that you will definitely need in the future by clicking on the
+link, and check for updates or force update mods using the launcher. Also,
+you can not subscribe to the "doubtful 50 mods" of the next server and
+easily remove them with one action from the launcher, while maintaining all
+the mods for which you have a subscription.
 
-### Используя SteamCMD
+### Using SteamCMD
 
-* 🟢 Всё происходит автоматически
-* 🟢 Автоматическая проверка наличия обновлений модов прямо сейчас (принудительно)
-* 🟡 Не создается подписки на моды, они просто скачиваются
-* 🟡 Требует закрытия клиента Steam для загрузки модов
-* 🔴 Иногда нужно повторно авторизоваться в Steam
+* 🟢 Everything happens automatically
+* 🟢 Automatically check for mod updates right now (forced)
+* 🟡 Mod subscriptions are not created, they are just downloaded
+* 🟡 Requires closing the Steam client to download mods
+* 🔴 Sometimes you need to re-login to Steam
 
-### Не используя SteamCMD
+### Not using SteamCMD
 
-* 🟢 Привычное поведение если вы уже использовали другие решения, к примеру [dayz-linux-cli-launcher][]
-* 🟡 Игра сама не запустится после скачивания модов
-* 🟡 Steam бывает задерживает проверку обновлений и скачивает их только после перезапуска или подписки/отписки от мода
-* 🔴 Подписываться на моды нужно самому руками
+* 🟢 Familiar behavior if you have already used other solutions, for example
+  [dayz-linux-cli-launcher][]
+* 🟡 The game itself will not start after downloading mods
+* 🟡 Steam sometimes delays checking for updates and downloads them only
+  after restarting or subscribing/unsubscribing from the mod
+* 🔴 You need to subscribe to mods with your own hands
 
-## Установка
+## Installation
 
-Для удобства установки имеется небольшой скрипт который сделает всё за вас (по крайней мере попытается сделать)
+For ease of installation, there is a small script that will do everything
+for you (at least try to do it)
 
-Выполните это:
+Execute this:
 
 ```bash
 curl -sSfL https://raw.githubusercontent.com/WoozyMasta/dayz-ctl/master/install | bash
 ```
 
-## Ручная установка
+## Manual installation
 
-Для работы лаунчера вам необходимо убедится что у вас установлены все зависимости:
+For the launcher to work, you need to make sure that you have all the
+dependencies installed:
 
-* [jq][] - утилита для обработки JSON
-* [fzf][] - утилита для нечеткого поиска
-* [gum][] - утилита для создания диалогов и стилизации вывода
-* `ping` (`iputils-ping`) - узнаем пинг до сервера (где включен ICMP)
-* `geoiplookup` (`geoip-bin`) - узнаем страну размещения сервера
-* `whois` - запасной вариант для geoiplookup, менее точный и более медленный, но не все записи есть в стандартной БД geoip
-* `curl` - утилита для комуникации с различными API по HTTP/S
-* `cut, tr, grep, pgrep, pkill, killal, timeout, sed, awk` (`gawk`) - куда же без класических утилит в скриптах
-* [Steam][] - онлайн-сервис цифрового распространения компьютерных игр
-* [SteamCMD][] - steamcmd Консольный клиент Steam
-* [DayZ][221100] - и естественно сама игра
+* [jq][] - JSON processing utility
+* [fzf][] - fuzzy search utility
+* [gum][] - utility for creating dialogs and styling output
+* `ping` (`iputils-ping`) - find out the ping to the server (where ICMP is
+  enabled)
+* `geoiplookup` (`geoip-bin`) - find out the country where the server is
+  located
+* `whois` - fallback for geoiplookup, less accurate and slower, but not all
+  entries are in the standard geoip database
+* `curl` - utility for communicating with various APIs over HTTP/S
+* `cut, tr, grep, pgrep, pkill, killal, timeout, sed, awk` (`gawk`) - where
+  without classic utilities in scripts
+* [Steam][] - online service for digital distribution of computer games
+* [SteamCMD][] - steamcmd Steam console client
+* [DayZ][221100] - and of course the game itself
 
-После чего можете склонировать репозиторий:
+Then you can clone the repository:
 
 ```bash
 git clone git@github.com:WoozyMasta/dayz-ctl.git
@@ -91,7 +117,7 @@ cd dayz-ctl
 ./dayz-ctl
 ```
 
-Или скачать сам файл скрипта:
+Or download the script file itself:
 
 ```bash
 curl -sSfL -o ~/.local/bin/dayz-ctl \
@@ -101,39 +127,45 @@ chmod +x ~/.local/bin/dayz-ctl
 dayz-ctl
 ```
 
-## Прочее
+## Other
 
-### Steam
+###Steam
 
-Лучше убирать все параметры запуска DayZ в Steam и управлять ими из лаунчера или наоборот. Так как ключи могут дублироваться и это может вызвать путаницу, или в худшем случае обрежет часть ключей, ведь у строки аргументов есть лимит длинны, а на серверах с большим количеством модов используется и так очень длинный параметр запуска.
+It is better to remove all DayZ launch options in Steam and manage them from
+the launcher or vice versa. Since the keys can be duplicated and this can
+cause confusion, or in the worst case, cut off some of the keys, because the
+argument string has a length limit, and on servers with a large number of
+mods, a very long launch parameter is also used.
 
-Т.е. оставьте параметры запуска пустыми, или укажите только нужный вам набор вспомогательных утилит и переменных, к примеру:
+Those. leave the launch options empty, or specify only the set of auxiliary
+utilities and variables you need, for example:
 
 ```bash
 MANGOHUD=1 ENABLE_VKBASALT=1 gamemoderun %command%
 ```
 
-### Синтаксис поиска
+### Search syntax
 
-Вы можете ввести несколько условий поиска, разделенных пробелами. например `^namalsk DE !PVE !RP`
+You can enter multiple search terms separated by spaces. e.g. `^namalsk DE
+!PVE !RP`
 
-| Token     | Match type                 | Description                          |
+| token     | match type                 | description                          |
 | --------- | -------------------------- | ------------------------------------ |
-| `sbtrkt`  | fuzzy-match                | Items that match `sbtrkt`            |
-| `'wild`   | exact-match (quoted)       | Items that include `wild`            |
+| `sbtrkt`  | fuzzy match                | Items that match `sbtrkt`            |
+| `wild`    | exact-match (quoted)       | Items that include `wild`            |
 | `^music`  | prefix-exact-match         | Items that start with `music`        |
 | `.mp3$`   | suffix-exact-match         | Items that end with `.mp3`           |
 | `!fire`   | inverse-exact-match        | Items that do not include `fire`     |
 | `!^music` | inverse-prefix-exact-match | Items that do not start with `music` |
 | `!.mp3$`  | inverse-suffix-exact-match | Items that do not end with `.mp3`    |
 
-Термин с одним символом черты действует как оператор ИЛИ
+A term with a single bar character acts as an OR operator
 
 ```regexp
 PVE | RP
 ```
 
-## Полезное
+## Useful
 
 * <https://github.com/FeralInteractive/gamemode>
 * <https://github.com/flightlessmango/MangoHud>
@@ -153,25 +185,30 @@ MANGOHUD=0 DXVK_HUD=fps DXVK_FRAME_RATE=60 ENABLE_VKBASALT=1 gamemoderun %comman
 
 `DXVK_HUD=fps` ... `DXVK_HUD=full`
 
-* `devinfo` — Displays the name of the GPU and the driver version.
-* `fps` — Shows the current frame rate.
-* `frametimes` — Shows a frame time graph.
-* `submissions` — Shows the number of command buffers submitted per frame.
-* `drawcalls` — Shows the number of draw calls and render passes per frame.
-* `pipelines` — Shows the total number of graphics and compute pipelines.
-* `descriptors` — Shows the number of descriptor pools and descriptor sets.
-* `memory` — Shows the amount of device memory allocated and used.
-* `gpuload` — Shows estimated GPU load. May be inaccurate.
-* `version` — Shows DXVK version.
-* `api` — Shows the D3D feature level used by the application.
-* `cs` — Shows worker thread statistics.
+* `devinfo` - Displays the name of the GPU and the driver version.
+* `fps` - Shows the current frame rate.
+* `frametimes` - Shows a frame time graph.
+* `submissions` - Shows the number of command buffers submitted per frame.
+* `drawcalls` - Shows the number of draw calls and render passes per frame.
+* `pipelines` - Shows the total number of graphics and compute pipelines.
+* `descriptors` - Shows the number of descriptor pools and descriptor sets.
+* `memory` - Shows the amount of device memory allocated and used.
+* `gpuload` - Shows estimated GPU load. May be inaccurate.
+* `version` - Shows DXVK version.
+* `api` - Shows the D3D feature level used by the application.
+* `cs` - Shows worker thread statistics.
 * `compiler` — Shows shader compiler activity
-* `samplers` — Shows the current number of sampler pairs used [D3D9 Only]
+* `samplers` - Shows the current number of sampler pairs used [D3D9 Only]
 * `scale=x` — Scales the HUD by a factor of x (e.g. 1.5)
 
 Frame rate limit `DXVK_FRAME_RATE=0`
 
 <!-- Links -->
+[eng 🇬🇧]: README.md
+[ua 🇺🇦]: README.ua.md
+[rus 🇷🇺]: README.ru.md
+[logo]: extra/dayz-ctl-logo.svg
+
 [DayZ]: https://dayz.com
 [Bohemia Interactive]: https://www.bohemia.net/games/dayz
 [221100]: https://store.steampowered.com/app/221100
@@ -186,7 +223,7 @@ Frame rate limit `DXVK_FRAME_RATE=0`
 [Steam]: https://store.steampowered.com/about/
 [Proton]: https://github.com/ValveSoftware/Proton
 
-<!-- 
+<!--
 DayZ DayZSA dayzstandalone dayz standalone linux nix proton steam
 DayZ launcher Linux
 DayZ servers browser linux
