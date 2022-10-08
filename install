@@ -97,7 +97,6 @@ else
   else
     bin_path="$DAYZ_CTL_BIN_DIR"
     mkdir -p "$DAYZ_CTL_BIN_DIR"
-    export PATH="$DAYZ_CTL_BIN_DIR:$PATH"
   fi
   package_su="sudo"
 fi
@@ -186,8 +185,10 @@ installed_packages+=(dayz-ctl)
 
 # Check dayz-ctl installed success
 if ! command -v dayz-ctl &>/dev/null; then
-  [ -f "$bin_path/dayz-ctl" ] &&
-    $package_su ln -s "$bin_path/dayz-ctl" /usr/bin/dayz-ctl
+  printf '%s\n\t%s\n' \
+    "Create a symlink for the executable file, need superuser rights" \
+    "ln -s \"$bin_path/dayz-ctl\" /usr/bin/dayz-ctl"
+  $package_su ln -s "$bin_path/dayz-ctl" /usr/bin/dayz-ctl
 fi
 
 # Create desktop entry
