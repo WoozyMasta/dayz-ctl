@@ -12,7 +12,7 @@ set -euo pipefail
 : "${USER_APPLICATIONS_DIR:=$HOME/.local/share/applications}"
 : "${USER_ICONS_DIR:=$HOME/.local/share/icons}"
 : "${USER_DOCK_DIR:=$HOME/.config/plank/dock1/launchers}"
-: "${TEST_MODE:-false}"
+: "${TEST_MODE:=false}"
 
 jq_version='1.6'
 fzf_version='0.34.0'
