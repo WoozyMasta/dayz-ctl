@@ -500,9 +500,10 @@ getNotInstalledMods() {
     gum format \
       'Go back to launching the game again after Steam installs all the mods'
     exit 0
+  fi
 
   # Update multiplie Workshop Mods
-  elif ! gum confirm --affirmative='Skip' --negative='Update' \
+  if ! gum confirm --affirmative='Skip' --negative='Update' \
     --prompt.border=hidden --timeout=10s \
     "Want to update all mods before launch?"
   then
