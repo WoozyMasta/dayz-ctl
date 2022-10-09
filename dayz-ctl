@@ -50,10 +50,13 @@ declare -A dependencies=(
 )
 
 # Filters for server browser
+# TODO change to case esac with inputs
 declare -A server_filters=(
   [Moded]='.value.mods | length > 0'
-  [Mods < $DAYZ_FILTER_MOD_LIMIT]=".value.mods | length < $DAYZ_FILTER_MOD_LIMIT"
   [Not Moded]='.value.mods | length == 0'
+  [Mods < $DAYZ_FILTER_MOD_LIMIT]="
+    (.value.mods | length > 0) and
+    (.value.mods | length < $DAYZ_FILTER_MOD_LIMIT)"
   [Without Password]='.value.password==false'
   [First Person]='.value.firstPersonOnly'
   [Oficial Server]='.value.shard=="public"'
@@ -62,6 +65,9 @@ declare -A server_filters=(
   [Day Time]='def d:(.value.time|split(":")[0]|tonumber); d >= 6 and d <= 18'
   [Night Time]='def d:(.value.time|split(":")[0]|tonumber); d < 6 or d > 18'
   [BattlEye]='.value.battlEye'
+  [Players > 25%]="25 < (.value.players * 100 / .value.maxPlayers)"
+  [Players > 50%]="50 < (.value.players * 100 / .value.maxPlayers)"
+  [Players > 75%]="75 < (.value.players * 100 / .value.maxPlayers)"
 )
 
 # GUM colors
@@ -308,7 +314,7 @@ requestServersList() {
   gum spin --title 'Get DayZ server list...' -- \
     curl -o "$DAYZ_SERVER_DB" \
       -m 30 -H "User-Agent: $DAYZ_USERAGENT" \
-      -sSfL "$DAYZ_API/launcher/servers/dayz"
+      -sSfL "$DAYZ_API/launcher/servers/dayz" || rm -f -- "$DAYZ_SERVER_DB"
   jq -er '.status? | numbers | . == 0' "$DAYZ_SERVER_DB" &>/dev/null ||
     fail "Something wrong with get servers list, please try again"
 
@@ -332,7 +338,7 @@ checkServersList() {
 # Multiplie select filters and print select requests
 applyServerFiltres() {
   mapfile -t selected_filters < <(
-    gum choose --no-limit --height=11 "${!server_filters[@]}"
+    gum choose --no-limit --height=10 "${!server_filters[@]}"
   )
   for filter in "${selected_filters[@]}"; do
     printf 'select(%s) | ' "${server_filters[$filter]}"
