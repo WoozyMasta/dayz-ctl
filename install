@@ -41,6 +41,7 @@ declare -A packages=(
   [curl]=curl
   [grep]=grep
   [awk]=gawk
+  [xdg-open]=xdg-utils
 )
 
 fail() {
@@ -126,9 +127,9 @@ done
 
 # Check Steam installed
 if ! command -v steam &>/dev/null && [ "${TEST_MODE,,}" = false ]; then
+  printf '%s\t(%s)\n' 'Install: Steam' 'https://store.steampowered.com'
   [ "${packages_data_fresh:=0}" -eq 0 ] &&
     ${package_update:-:} && ((packages_data_fresh+=1))
-  printf '%s\t(%s)\n' 'Install: Steam' 'https://store.steampowered.com'
   $package_manager steam ||
     fail 'Steam not installed, install it first please' \
       'https://store.steampowered.com/about/'
@@ -139,6 +140,7 @@ fi
 for pkg in "${!packages[@]}"; do
   command -v "$pkg" &>/dev/null && continue
 
+  echo "Install $pkg"
   [ -z "${package_manager:-}" ] &&
     echo "Cant't install $pkg" &&
     fail "Failed to determine the package manager for your distribution," \
