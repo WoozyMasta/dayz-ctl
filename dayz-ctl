@@ -7,6 +7,7 @@ set -euo pipefail
 
 ## Variables
 ## ---------
+DAYZ_CTL_REPO=WoozyMasta/dayz-ctl
 : "${DAYZ_CTL_VERSION:=0.1.0}"
 : "${DAYZ_CTL_NAME:=${0##*/}}"
 : "${DAYZ_GAME_ID:=221100}"
@@ -1197,7 +1198,7 @@ if [ ! -s "$DAYZ_PROFILE" ]; then
       '* Mods will be installed and updated automatically with this launcher' \
       '* Steam will not know anything about your installed mods' '' \
       '_See the project documentation for more details_' \
-      'https://github.com/WoozyMasta/dayz-ctl'
+      "https://github.com/$DAYZ_CTL_REPO"
   )"
   then
     setConfigVar DAYZ_STEAMCMD_ENABLED true
@@ -1327,7 +1328,7 @@ while read -r option; do
           'Remove All Mods Without Subscription'
           'Remove All Mod Links'
         )
-      config_menu_options+=('Update servers list' 'About')
+      config_menu_options+=('Update servers list' 'Check for updates' 'About')
       while read -r option; do
         case $option in
           'Game Launch Options')
@@ -1352,6 +1353,11 @@ while read -r option; do
           'Remove All Mod Links')
             closeScreen
             removeAllModLinks; exit 0;;
+          'Check for updates')
+            closeScreen
+            curl -sSfL \
+              https://raw.githubusercontent.com/$DAYZ_CTL_REPO/master/install |\
+            bash;;
           'About')
             closeScreen
             echo
@@ -1368,12 +1374,14 @@ while read -r option; do
               "* DayZ API:     \`$DAYZ_API\`" \
               "* SteamCMD:     \`$DAYZ_STEAMCMD_ENABLED\`" '' \
               "Thanks to https://dayzsalauncher.com for the API" \
-              "[$DAYZ_CTL_NAME project](https://github.com/WoozyMasta/dayz-ctl)"\
+              "[$DAYZ_CTL_NAME project](https://github.com/$DAYZ_CTL_REPO)"\
               "WoozyMasta <me@woozymasta.ru>"
             exit 0;;
           *) fail "Unknown option $1";;
         esac
-      done < <(printf '%s\n' "${config_menu_options[@]}" | gum choose);;
+      done < <(
+        printf '%s\n' "${config_menu_options[@]}" | gum choose --height=11
+      );;
     *) fail "Unknown option $1"; exit 0;;
   esac
 done < <(printf '%s\n' "${main_menu_options[@]}" | gum choose --height=11)
