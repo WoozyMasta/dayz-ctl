@@ -322,12 +322,12 @@ checkServersList() {
 applyServerFiltres() {
   local available_filters=(
     # First page
-    'Oficial Server' 'Moded' "Mods > $DAYZ_FILTER_MOD_LIMIT ..."
+    'Oficial Server' 'Moded' "Mods < $DAYZ_FILTER_MOD_LIMIT ..."
     'Without Password' 'First Person' 'Day Time' 'With BattlEye'
     'With Players' "Players > $DAYZ_FILTER_PLAYERS_LIMIT% ..." 'Not Full'
     'Filter by Map ...'
     # Second page
-    'Not Oficial Server' 'Not Moded' "Mods < $DAYZ_FILTER_MOD_LIMIT ..."
+    'Not Oficial Server' 'Not Moded' "Mods > $DAYZ_FILTER_MOD_LIMIT ..."
     'With Password' 'Third Person' 'Night Time' 'Without BattlEye'
     'Without Players' "Players < $DAYZ_FILTER_PLAYERS_LIMIT% ..." 'Full'
   ) filters=()
