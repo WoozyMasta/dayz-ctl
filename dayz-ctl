@@ -34,6 +34,7 @@ DAYZ_CTL_REPO=WoozyMasta/dayz-ctl
 
 : "${DAYZ_STEAMCMD_ENABLED:=true}"
 : "${DAYZ_FILTER_MOD_LIMIT:=10}"
+: "${DAYZ_FILTER_PLAYERS_LIMIT:=50}"
 
 [ -d "$DAYZ_CTL_BIN_DIR" ] && export PATH="$DAYZ_CTL_BIN_DIR:$PATH"
 
@@ -50,27 +51,6 @@ declare -A dependencies=(
   [jq]=https://github.com/stedolan/jq
   [gum]=https://github.com/charmbracelet/gum
   [fzf]=https://github.com/junegunn/fzf
-)
-
-# Filters for server browser
-# TODO change to case esac with inputs
-declare -A server_filters=(
-  [Moded]='.value.mods | length > 0'
-  [Not Moded]='.value.mods | length == 0'
-  [Mods < $DAYZ_FILTER_MOD_LIMIT]="
-    (.value.mods | length > 0) and
-    (.value.mods | length < $DAYZ_FILTER_MOD_LIMIT)"
-  [Without Password]='.value.password==false'
-  [First Person]='.value.firstPersonOnly'
-  [Oficial Server]='.value.shard=="public"'
-  [With Players]='.value.players > 0'
-  [Not Full]='.value.players < .value.maxPlayers'
-  [Day Time]='def d:(.value.time|split(":")[0]|tonumber); d >= 6 and d <= 18'
-  [Night Time]='def d:(.value.time|split(":")[0]|tonumber); d < 6 or d > 18'
-  [BattlEye]='.value.battlEye'
-  [Players > 25%]="25 < (.value.players * 100 / .value.maxPlayers)"
-  [Players > 50%]="50 < (.value.players * 100 / .value.maxPlayers)"
-  [Players > 75%]="75 < (.value.players * 100 / .value.maxPlayers)"
 )
 
 # GUM colors
@@ -340,24 +320,93 @@ checkServersList() {
 
 # Multiplie select filters and print select requests
 applyServerFiltres() {
-  mapfile -t selected_filters < <(
-    gum choose --no-limit --height=10 "${!server_filters[@]}"
-  )
-  for filter in "${selected_filters[@]}"; do
-    printf 'select(%s) | ' "${server_filters[$filter]}"
-  done
-}
+  local available_filters=(
+    # First page
+    'Oficial Server' 'Moded' "Mods > $DAYZ_FILTER_MOD_LIMIT ..."
+    'Without Password' 'First Person' 'Day Time' 'With BattlEye'
+    'With Players' "Players > $DAYZ_FILTER_PLAYERS_LIMIT% ..." 'Not Full'
+    'Filter by Map ...'
+    # Second page
+    'Not Oficial Server' 'Not Moded' "Mods < $DAYZ_FILTER_MOD_LIMIT ..."
+    'With Password' 'Third Person' 'Night Time' 'Without BattlEye'
+    'Without Players' "Players < $DAYZ_FILTER_PLAYERS_LIMIT% ..." 'Full'
+  ) filters=()
 
-# Get list and count of maps, select one map and print select request
-applyServerMapFiltres() {
-  chose=$(gum choose < <(
-    jq -er '
-      .result | map(.map) |
-      reduce .[] as $i ({};setpath([$i]; getpath([$i]) + 1)) |
-      to_entries | sort_by(.value) | reverse[] | "\(.key) [\(.value)]"
-    ' "$DAYZ_SERVER_DB"
-  ))
-  printf 'select(.value.map == "%s") | ' "${chose%[[:space:]][*}"
+  # '✅	Oficial Server' '🛠️	Moded' "⬆️	Mods > $DAYZ_FILTER_MOD_LIMIT"
+  # '🔓	Without Password' '👤	First Person' '☀️	Day Time' '🛡️	With BattlEye'
+  # '🚹	With Players' "📈	Players > $DAYZ_FILTER_PLAYERS_LIMIT%" '✔️	Not Full'
+  # '🗺️	Filter by Map'
+  # '❌	Not Oficial Server' '⚙️	Not Moded' "⬇️	Mods < $DAYZ_FILTER_MOD_LIMIT"
+  # '🔒	With Password' '👥	Third Person' '🌙	Night Time' '⚠️	Without BattlEye'
+  # '💤	Without Players' "📉	Players < $DAYZ_FILTER_PLAYERS_LIMIT%" '🚫	Full'
+
+  while read -u 3 -r filter; do
+    case $filter in
+      'Filter by Map...')
+        map=$(gum choose < <(
+          jq -er '
+            .result | map(.map) |
+            reduce .[] as $i ({};setpath([$i]; getpath([$i]) + 1)) |
+            to_entries | sort_by(.value) | reverse[] | .key
+          ' "$DAYZ_SERVER_DB"
+        ))
+        filters+=(".value.map==\"$map\"");;
+      'Oficial Server')     filters+=('.value.shard=="public"');;
+      'Not Oficial Server') filters+=('.value.shard!="public"');;
+      'Moded')              filters+=('.value.mods | length > 0');;
+      'Not Moded')          filters+=('.value.mods | length == 0');;
+      'With Password')      filters+=('.value.password');;
+      'Without Password')   filters+=('.value.password==false');;
+      'First Person')       filters+=('.value.firstPersonOnly');;
+      'Third Person')       filters+=('.value.firstPersonOnly==false');;
+      'With Players')       filters+=('.value.players > 0');;
+      'Without Players')    filters+=('.value.players == 0');;
+      'Not Full')           filters+=('.value.players < .value.maxPlayers');;
+      'Full')               filters+=('.value.players >= .value.maxPlayers');;
+      'With BattlEye')      filters+=('.value.battlEye');;
+      'Without BattlEye')   filters+=('.value.battlEye==false');;
+      'Day Time')           filters+=(
+          'def d:(.value.time | split(":")[0] | tonumber); d >= 6 and d <= 18'
+        );;
+      'Night Time')         filters+=(
+          'def d:(.value.time | split(":")[0] | tonumber); d < 6 or d > 18'
+        );;
+      'Mods >'*)
+        count="$(
+          gum input --prompt 'Number of mods is more than: ' \
+            --char-limit 3 --value "$DAYZ_FILTER_MOD_LIMIT"
+        )"
+        filters+=(
+          "(.value.mods | length > 0) and (.value.mods | length > $count)"
+        );;
+      'Mods <'*)
+        count="$(
+          gum input --prompt 'Number of mods is less than: ' \
+            --char-limit 3 --value "$DAYZ_FILTER_MOD_LIMIT"
+        )"
+        filters+=(
+          "(.value.mods | length > 0) and (.value.mods | length < $count)"
+        );;
+      'Players >'*)
+        count="$(
+          gum input --prompt 'Number of players in % more than: ' \
+            --char-limit 3 --value "$DAYZ_FILTER_PLAYERS_LIMIT"
+        )"
+        filters+=("(.value.players * 100 / .value.maxPlayers) > $count");;
+      'Players <'*)
+        count="$(
+          gum input --prompt 'Number of players in % less than: ' \
+            --char-limit 3 --value "$DAYZ_FILTER_PLAYERS_LIMIT"
+        )"
+        filters+=("(.value.players * 100 / .value.maxPlayers) < $count");;
+    esac
+  done 3< <(
+    printf '%s\n' "${available_filters[@]}" | \
+    gum choose --no-limit --height=11
+  )
+
+  select="select($(printf '(%s) and ' "${filters[@]}")) |"
+  printf '%s' "${select//and[[:space:]])/)}"
 }
 
 # Preview window for show server details
@@ -1161,6 +1210,25 @@ removeAllModLinks() {
   fi
 }
 
+about() {
+  gum format \
+    "## DayZ CTL $DAYZ_CTL_VERSION" \
+    "* Game ID:      \`$DAYZ_GAME_ID\`" \
+    "* WorkDir:      \`$DAYZ_CTL_DIR\`" \
+    "* SteamDir:     \`$steam_root\`" \
+    "* Config:       \`$DAYZ_CONFIG_FILE\`" \
+    "* History size: \`$DAYZ_HISTORY_SIZE\`" \
+    "* Profile DB:   \`$DAYZ_PROFILE\`" \
+    "* Servers DB:   \`$DAYZ_SERVER_DB\` [TTL $DAYZ_SERVER_DB_TTL s]"\
+    "* New DB:       \`$DAYZ_NEWS_DB\` [TTL $DAYZ_NEWS_DB_TTL s]" \
+    "* Mods DB:      \`$DAYZ_MODS_DB\`" \
+    "* DayZ API:     \`$DAYZ_API\`" \
+    "* SteamCMD:     \`$DAYZ_STEAMCMD_ENABLED\`" '' \
+    "Thanks to https://dayzsalauncher.com for the API" \
+    "[$DAYZ_CTL_NAME project](https://github.com/$DAYZ_CTL_REPO)"\
+    "WoozyMasta <me@woozymasta.ru>"
+}
+
 openScreen() {
   [ ! ${-/x/} = $- ] && return
   printf '\033[?1049h'
@@ -1298,7 +1366,7 @@ echo
 # Get game launch options
 mapfile -t dayz_launch_options < <(getDayZLaunchOptions)
 
-main_menu_options=('All Servers' 'Filter Servers' 'Filter Servers by Map')
+main_menu_options=('All Servers' 'Filter Servers')
 [ "$(jq -er '.favorites | length' "$DAYZ_PROFILE")" -gt 0 ] &&
   main_menu_options+=('Favorite Servers')
 [ "$(jq -er '.history | length' "$DAYZ_PROFILE")" -gt 0 ] &&
@@ -1326,12 +1394,6 @@ while read -r option; do
       else
         execSelf
       fi;;
-    'Filter Servers by Map')
-      if _id=$(fzfServers "$(applyServerMapFiltres) $(applyServerFiltres)"); then
-        server_data="$(getServerData "$_id")"
-      else
-        execSelf
-      fi;;
     'Favorite Servers')
       if _responce="$(getFavoriteServers favorites)"; then
         _id=$(cut -f1 <<< "$_responce")
@@ -1355,7 +1417,7 @@ while read -r option; do
     'Play Offline')
       runDayZOffline "${dayz_launch_options[@]}"; exit 0;;
     'DayZ News')
-      closeScreen; getDayzNews "$(($(tput lines)/2-3))"; exit 0;;
+      getDayzNews "$(($(tput lines)/2-3))" | less -R; execSelf;;
     'Config')
       config_menu_options=('Game Launch Options' 'Change Steam Root Dir')
       if [ $DAYZ_STEAMCMD_ENABLED = true ]; then
@@ -1398,22 +1460,7 @@ while read -r option; do
               https://raw.githubusercontent.com/$DAYZ_CTL_REPO/master/install |\
               bash;;
           'About')
-            echo
-            gum format "## DayZ CTL $DAYZ_CTL_VERSION" \
-              "* Game ID:      \`$DAYZ_GAME_ID\`" \
-              "* WorkDir:      \`$DAYZ_CTL_DIR\`" \
-              "* SteamDir:     \`$steam_root\`" \
-              "* Config:       \`$DAYZ_CONFIG_FILE\`" \
-              "* History size: \`$DAYZ_HISTORY_SIZE\`" \
-              "* Profile DB:   \`$DAYZ_PROFILE\`" \
-              "* Servers DB:   \`$DAYZ_SERVER_DB\` [TTL $DAYZ_SERVER_DB_TTL s]"\
-              "* New DB:       \`$DAYZ_NEWS_DB\` [TTL $DAYZ_NEWS_DB_TTL s]" \
-              "* Mods DB:      \`$DAYZ_MODS_DB\`" \
-              "* DayZ API:     \`$DAYZ_API\`" \
-              "* SteamCMD:     \`$DAYZ_STEAMCMD_ENABLED\`" '' \
-              "Thanks to https://dayzsalauncher.com for the API" \
-              "[$DAYZ_CTL_NAME project](https://github.com/$DAYZ_CTL_REPO)"\
-              "WoozyMasta <me@woozymasta.ru>" | less -r
+            about | less -r
             execSelf;;
           *) fail "Unknown option $1";;
         esac
