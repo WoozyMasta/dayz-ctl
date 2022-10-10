@@ -7,6 +7,9 @@ set -euo pipefail
 
 ## Variables
 ## ---------
+DAYZ_CTL_CMD="$(
+  cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)/$(basename "${BASH_SOURCE[0]}"
+)"
 DAYZ_CTL_REPO=WoozyMasta/dayz-ctl
 : "${DAYZ_CTL_VERSION:=0.1.0}"
 : "${DAYZ_CTL_NAME:=${0##*/}}"
@@ -916,11 +919,14 @@ runDayZOffline() {
     then
       for id in "${sp_mods[@]}"; do
         workshopDownload "$id" "Mod: $id"
-        [ ! -h "$dayz_path/@$id" ] && \
-          ln -sr "$dayz_workshop_path/$id" "$dayz_path/@$id"
       done
       closeSteamClient
     fi
+
+    for id in "${sp_mods[@]}"; do
+      [ ! -h "$dayz_path/@$id" ] && \
+        ln -sr "$dayz_workshop_path/$id" "$dayz_path/@$id"
+    done
   fi
 
   if ! gum confirm --affirmative='Enable Spawn' --negative='Disable Spawn' \
@@ -1170,6 +1176,11 @@ closeScreen() {
   export _screen=0
 }
 
+execSelf() {
+  closeScreen
+  exec $DAYZ_CTL_CMD
+}
+
 export -f fzfPreview
 export DAYZ_SERVER_DB
 
@@ -1304,24 +1315,39 @@ main_menu_options+=(
 while read -r option; do
   case $option in
     'All Servers')
-      _id="$(fzfServers '')"
-      server_data="$(getServerData "$_id")";;
+      if _id="$(fzfServers '')"; then
+        server_data="$(getServerData "$_id")"
+      else
+        execSelf
+      fi;;
     'Filter Servers')
-      _id=$(fzfServers "$(applyServerFiltres)")
-      server_data="$(getServerData "$_id")";;
+      if _id=$(fzfServers "$(applyServerFiltres)"); then
+        server_data="$(getServerData "$_id")"
+      else
+        execSelf
+      fi;;
     'Filter Servers by Map')
-      _id=$(fzfServers "$(applyServerMapFiltres) $(applyServerFiltres)")
-      server_data="$(getServerData "$_id")";;
+      if _id=$(fzfServers "$(applyServerMapFiltres) $(applyServerFiltres)"); then
+        server_data="$(getServerData "$_id")"
+      else
+        execSelf
+      fi;;
     'Favorite Servers')
-      _responce="$(getFavoriteServers favorites)"
-      _id=$(cut -f1 <<< "$_responce")
-      server_data="$(getServerData "$_id")"
-      server_resque_name=$(cut -f2 <<< "$_responce");;
+      if _responce="$(getFavoriteServers favorites)"; then
+        _id=$(cut -f1 <<< "$_responce")
+        server_data="$(getServerData "$_id")"
+        server_resque_name=$(cut -f2 <<< "$_responce")
+      else
+        execSelf
+      fi;;
     'Recently Played')
-      _responce="$(getFavoriteServers history)"
-      _id=$(cut -f1 <<< "$_responce")
-      server_data="$(getServerData "$_id")"
-      server_resque_name=$(cut -f2 <<< "$_responce");;
+      if _responce="$(getFavoriteServers history)"; then
+        _id=$(cut -f1 <<< "$_responce")
+        server_data="$(getServerData "$_id")"
+        server_resque_name=$(cut -f2 <<< "$_responce")
+      else
+        execSelf
+      fi;;
     'Direct Connect')
       server_data="$(directConnect)";;
     'Launch Game')
@@ -1348,34 +1374,30 @@ while read -r option; do
       while read -r option; do
         case $option in
           'Game Launch Options')
-            setDayZLaunchOptions; exit 0;;
+            setDayZLaunchOptions; execSelf;;
           'Change Steam Root Dir')
-            setProfileSteamRoot; exit 0;;
+            setProfileSteamRoot; execSelf;;
           'Disable SteamCMD')
-            setConfigVar DAYZ_STEAMCMD_ENABLED false; exit 0;;
+            setConfigVar DAYZ_STEAMCMD_ENABLED false; execSelf;;
           'Set Steam Login and enable SteamCMD')
-            setProfileSteamLogin; exit 0;;
+            setProfileSteamLogin; execSelf;;
           'Change Steam Login')
-            setProfileSteamLogin; exit 0;;
+            setProfileSteamLogin; execSelf;;
           'Change Player Name')
-            setProfileDayzUser; exit 0;;
+            setProfileDayzUser; execSelf;;
           'Installed Mod Info')
-            closeScreen; printInstalledModsInfo | gum format; exit 0;;
+            printInstalledModsInfo | gum format | less -r; execSelf;;
           'Update servers list')
-            gum confirm; requestServersList; exit 0;;
+            requestServersList; execSelf;;
           'Remove All Mods Without Subscription')
-            closeScreen
-            removeAllLauncherInstalledMods; exit 0;;
+            removeAllLauncherInstalledMods; execSelf;;
           'Remove All Mod Links')
-            closeScreen
-            removeAllModLinks; exit 0;;
+            removeAllModLinks; execSelf;;
           'Check for updates')
-            closeScreen
             curl -sSfL \
               https://raw.githubusercontent.com/$DAYZ_CTL_REPO/master/install |\
-            bash;;
+              bash;;
           'About')
-            closeScreen
             echo
             gum format "## DayZ CTL $DAYZ_CTL_VERSION" \
               "* Game ID:      \`$DAYZ_GAME_ID\`" \
@@ -1391,8 +1413,8 @@ while read -r option; do
               "* SteamCMD:     \`$DAYZ_STEAMCMD_ENABLED\`" '' \
               "Thanks to https://dayzsalauncher.com for the API" \
               "[$DAYZ_CTL_NAME project](https://github.com/$DAYZ_CTL_REPO)"\
-              "WoozyMasta <me@woozymasta.ru>"
-            exit 0;;
+              "WoozyMasta <me@woozymasta.ru>" | less -r
+            execSelf;;
           *) fail "Unknown option $1";;
         esac
       done < <(
