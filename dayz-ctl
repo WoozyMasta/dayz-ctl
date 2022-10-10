@@ -564,7 +564,7 @@ workshopDownload() {
 # Run Steam if not runned
 runSteamClient() {
   pgrep steam &>/dev/null && return 0
-  steam -nofriendsui -silent &>/dev/null & disown "%steam"
+  nohup steam -nofriendsui -silent </dev/null >/dev/null 2>&1 &
   gum spin --title='Launch Steam Client..' --spinner=dot -- sleep 10s
   gum confirm --prompt.align=center "$(
     gum format 'Please make sure Steam is running and' \
@@ -954,10 +954,20 @@ runDayZ() {
     fi
   fi
 
-  pgrep steam &>/dev/null && steam_disown=1
-  steam -applaunch "$DAYZ_GAME_ID" -nolauncher \
-    -name "$dayz_user" "${args[@]}" &>/dev/null &
-  [ ${steam_disown:-0} = 1 ] && disown "%steam"
+  if ! pgrep steam &>/dev/null; then
+    nohup steam -applaunch "$DAYZ_GAME_ID" -nolauncher \
+      -name "$dayz_user" "${args[@]}" </dev/null >/dev/null 2>&1 &
+  else
+    steam -applaunch "$DAYZ_GAME_ID" -nolauncher \
+        -name "$dayz_user" "${args[@]}" &
+    disown %steam
+  fi
+
+  while :; do
+    pgrep -f 'DayZ.*exe' &>/dev/null && break
+    gum spin --spinner=dot --title="Launch DayZ" -- sleep 1s
+  done
+
   exit 0
 }
 
