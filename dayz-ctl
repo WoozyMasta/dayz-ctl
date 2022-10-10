@@ -19,22 +19,25 @@ DAYZ_CTL_REPO=WoozyMasta/dayz-ctl
 : "${APPLICATIONS_DIR:=$HOME/.local/share/applications}"
 : "${DAYZ_CTL_DIR:=$HOME/.local/share/dayz-ctl}"
 : "${DAYZ_CTL_BIN_DIR:=$HOME/.local/share/dayz-ctl/bin}"
+: "${DAYZ_REQUEST_TIMEOUT:=10}" # Curl timeout in seconds
 : "${DAYZ_CONFIG_FILE:=$DAYZ_CTL_DIR/$DAYZ_CTL_NAME.conf}"
 : "${DAYZ_SERVER_DB:=$DAYZ_CTL_DIR/servers.json}"
 : "${DAYZ_SERVER_DB_TTL:=300}" # TTL in seconds
+: "${DAYZ_SERVER_REQUEST_TIMEOUT:=30}" # Curl timeout in seconds
 : "${DAYZ_NEWS_DB:=$DAYZ_CTL_DIR/news.json}"
 : "${DAYZ_NEWS_DB_TTL:=3600}" # TTL in seconds
 : "${DAYZ_MODS_DB:=$DAYZ_CTL_DIR/mods.json}"
 : "${DAYZ_PROFILE:=$DAYZ_CTL_DIR/profile.json}"
 : "${DAYZ_HISTORY_SIZE:=10}"
 : "${DAYZ_FZF_HISTORY:=$DAYZ_CTL_DIR/.$DAYZ_CTL_NAME-history}"
-: "${DAYZ_USERAGENT:="$DAYZ_CTL_NAME"}"
+: "${DAYZ_USERAGENT:="$DAYZ_CTL_NAME $DAYZ_CTL_VERSION"}"
 : "${DAYZ_API:=https://dayzsalauncher.com/api/v1}"
 # https://api.dayzmagiclauncher.com/servers
 
 : "${DAYZ_STEAMCMD_ENABLED:=true}"
 : "${DAYZ_FILTER_MOD_LIMIT:=10}"
 : "${DAYZ_FILTER_PLAYERS_LIMIT:=50}"
+: "${DAYZ_FILTER_PLAYERS_SLOTS:=60}"
 
 [ -d "$DAYZ_CTL_BIN_DIR" ] && export PATH="$DAYZ_CTL_BIN_DIR:$PATH"
 
@@ -186,7 +189,7 @@ timeAgo() {
 # Get players online in DayZ from Steam
 getPlayersOnline() {
   local metod='ISteamUserStats/GetNumberOfCurrentPlayers/v1/'
-  curl -m 10 -H "User-Agent: $DAYZ_USERAGENT" -sSfL \
+  curl -sSfLA "$DAYZ_USERAGENT" -m "$DAYZ_REQUEST_TIMEOUT" \
     "https://api.steampowered.com/$metod?appid=$DAYZ_GAME_ID" | \
   jq -er '.response.player_count' || echo '❔'
 }
@@ -218,7 +221,7 @@ getDayzNews() {
 # Save News from dayz.com
 updateDayzNews() {
   gum spin --title 'Get DayZ news...' -- \
-  curl -m 10 -H "User-Agent: $DAYZ_USERAGENT" -sSfL \
+  curl -sSfLA "$DAYZ_USERAGENT" -m "$DAYZ_REQUEST_TIMEOUT" \
     -o "$DAYZ_NEWS_DB" "https://dayz.com/api/article?rowsPerPage=100"
 }
 
@@ -295,9 +298,9 @@ getDayZLaunchOptions() {
 # Get all servers list from dayzsalauncher.com
 requestServersList() {
   gum spin --title 'Get DayZ server list...' -- \
-    curl -o "$DAYZ_SERVER_DB" \
-      -m 30 -H "User-Agent: $DAYZ_USERAGENT" \
-      -sSfL "$DAYZ_API/launcher/servers/dayz" || rm -f -- "$DAYZ_SERVER_DB"
+    curl -sSfLA "$DAYZ_USERAGENT" -m "$DAYZ_SERVER_REQUEST_TIMEOUT" \
+      -o "$DAYZ_SERVER_DB" "$DAYZ_API/launcher/servers/dayz" || \
+    rm -f -- "$DAYZ_SERVER_DB"
   jq -er '.status? | numbers | . == 0' "$DAYZ_SERVER_DB" &>/dev/null ||
     fail "Something wrong with get servers list, please try again"
 
@@ -330,6 +333,7 @@ applyServerFiltres() {
     'Not Oficial Server' 'Not Moded' "Mods > $DAYZ_FILTER_MOD_LIMIT ..."
     'With Password' 'Third Person' 'Night Time' 'Without BattlEye'
     'Without Players' "Players < $DAYZ_FILTER_PLAYERS_LIMIT% ..." 'Full'
+    "Player slots ≥ $DAYZ_FILTER_PLAYERS_SLOTS ..."
   ) filters=()
 
   # '✅	Oficial Server' '🛠️	Moded' "⬆️	Mods > $DAYZ_FILTER_MOD_LIMIT"
@@ -399,6 +403,12 @@ applyServerFiltres() {
             --char-limit 3 --value "$DAYZ_FILTER_PLAYERS_LIMIT"
         )"
         filters+=("(.value.players * 100 / .value.maxPlayers) < $count");;
+      'Player slots'*)
+        count="$(
+          gum input --prompt 'Number of slots for players more than: ' \
+            --char-limit 3 --value "$DAYZ_FILTER_PLAYERS_SLOTS"
+        )"
+        filters+=(".value.maxPlayers >= $count");;
     esac
   done 3< <(
     printf '%s\n' "${available_filters[@]}" | \
@@ -812,6 +822,7 @@ getFavoriteServers() {
   fi
 }
 
+# Delete server from favorits by ip and port
 deleteFavoriteServer() {
   local ip="$1" port="$2"
   jq -er --arg ip "$ip" --argjson port "$port" \
@@ -819,6 +830,7 @@ deleteFavoriteServer() {
     "$DAYZ_PROFILE" | sponge "$DAYZ_PROFILE"
 }
 
+# Delete server from favorits by name if server offline
 deleteFavoriteServerOffline() {
   local name="$1"
   jq -er --arg name "$name" 'del(.favorites[] | select(.name == $name))' \
@@ -889,7 +901,7 @@ updateDayZOffline() {
 
   [ -f "$version_file" ] && version=$(<"$version_file")
   release_url="$(
-    curl -fs -o/dev/null -w '%{redirect_url}' \
+    curl -fs -o/dev/null -m "$DAYZ_REQUEST_TIMEOUT" -w '%{redirect_url}' \
       "https://github.com/$repo/releases/latest"
   )"
   tag="${release_url##*/}"
@@ -1026,6 +1038,7 @@ runDayZ() {
   exit 0
 }
 
+# Get args from server json data and print as connection args for DayZ
 argsFromServerData() {
   local data="$1" args=("${@:2}")
   local mods server_name server_ip server_game_port exec_args=()
@@ -1053,6 +1066,7 @@ argsFromServerData() {
   printf '%s\n' "${exec_args[@]}"
 }
 
+# Create desktop entry launch icon by server json data
 createDesktopEntry() {
   local data="$1" args=("${@:2}")
   local server_name server_ip server_game_port launch_file
@@ -1087,9 +1101,11 @@ DesktopEntry
   chmod +x "$launch_file"
 }
 
+# Find server in Battlemetrics by ip, port, name and return URL
 getBattlemetricsURL () {
  local ip="$1" port="$2" name="$3"
-  curl -GsL 'https://api.battlemetrics.com/servers' \
+  curl -GsLA "$DAYZ_USERAGENT" -m "$DAYZ_REQUEST_TIMEOUT" \
+    'https://api.battlemetrics.com/servers' \
     -d "page[size]=10" \
     -d 'filter[game]=dayz' \
     -d "filter[search]=$ip $name" | \
@@ -1100,6 +1116,7 @@ getBattlemetricsURL () {
   ' 2>/dev/null || :
 }
 
+# Set Steam root dir and save in profile.json
 setProfileSteamRoot() {
   local path="${1:-}"
   [ -z "$path" ] && path="$(
@@ -1118,6 +1135,7 @@ setProfileSteamRoot() {
   fi
 }
 
+# Set Steam login chek it with SteamCMD and save in profile.json
 setProfileSteamLogin() {
   steam_login="$(
     gum input --placeholder="anonymous" --prompt="Steam login: "
@@ -1139,6 +1157,7 @@ setProfileSteamLogin() {
   sponge "$DAYZ_PROFILE"
 }
 
+# Set DayZ user name and save in profile.json
 setProfileDayzUser() {
   if [ "${steam_login:-anonymous}" = anonymous ]; then
     dayz_user_placeholder="${dayz_user:=survivor-$(( RANDOM % 1000 + 100 ))}"
@@ -1155,6 +1174,7 @@ setProfileDayzUser() {
   sponge "$DAYZ_PROFILE"
 }
 
+# Check max_map_count greter than 1048576
 checkSysctl() {
   local max_map_count=$((1024*1024))
   local file=/etc/sysctl.d/50-dayz.conf
@@ -1179,6 +1199,7 @@ checkSysctl() {
   fi
 }
 
+# Remove all mods installed with launcher
 removeAllLauncherInstalledMods() {
   local i=0 mods=() before_size after_size
   before_size="$(du -hd0 "$dayz_workshop_path")"
@@ -1198,6 +1219,7 @@ removeAllLauncherInstalledMods() {
   fi
 }
 
+# Remove all mods symlinks
 removeAllModLinks() {
   local before_size after_size i=0
   for f in "$dayz_path"/@*; do
@@ -1210,6 +1232,59 @@ removeAllModLinks() {
   fi
 }
 
+# Get updates
+getUpdates() {
+  exec curl -sSfLA "$DAYZ_USERAGENT" -m "$DAYZ_SERVER_REQUEST_TIMEOUT" \
+    https://bit.ly/3eiUTeu | bash
+}
+
+# Config Menu
+configMenu() {
+  # Base options #1
+  local config_menu_options=('Game launch options' 'Change Steam root dir')
+  # Options for SteamCMD
+  if [ $DAYZ_STEAMCMD_ENABLED = true ]; then
+    config_menu_options+=('Change Steam login' 'Disable SteamCMD')
+  else
+    config_menu_options+=('Set Steam login')
+  fi
+  # Base options #2
+  config_menu_options+=('Change player name')
+  # Options for mods
+  if [ "$(jq -er '.mods | length' "$DAYZ_MODS_DB")" -gt 0 ]; then
+    config_menu_options+=(
+      'Installed mod info'
+      'Remove manged mods'
+      'Remove all mod links'
+    )
+  fi
+  # Base options #3
+  config_menu_options+=('Update servers list' 'Check for updates' 'About')
+
+  # Config menu
+  while read -r option; do
+    case $option in
+      'Game launch options')   setDayZLaunchOptions;;
+      'Change Steam root dir') setProfileSteamRoot;;
+      'Change Steam login')    setProfileSteamLogin;;
+      'Disable SteamCMD')      setConfigVar DAYZ_STEAMCMD_ENABLED false;;
+      'Set Steam login')       setProfileSteamLogin;;
+      'Change player name')    setProfileDayzUser;;
+      'Installed mod info')    printInstalledModsInfo | gum format | less -r;;
+      'Remove manged mods')    removeAllLauncherInstalledMods;;
+      'Remove all mod links')  removeAllModLinks;;
+      'Update servers list')   requestServersList;;
+      'Check for updates')     getUpdates; exit 0;;
+      'About')                 about | less -r;;
+      *)                       fail "Unknown option $option";;
+    esac
+  done < <(
+    printf '%s\n' "${config_menu_options[@]}" | gum choose --height=11
+  )
+  execSelf
+}
+
+# Print about info
 about() {
   gum format \
     "## DayZ CTL $DAYZ_CTL_VERSION" \
@@ -1229,6 +1304,7 @@ about() {
     "WoozyMasta <me@woozymasta.ru>"
 }
 
+# Open screen for launcher window
 openScreen() {
   [ ! ${-/x/} = $- ] && return
   printf '\033[?1049h'
@@ -1236,6 +1312,7 @@ openScreen() {
   export _screen=1
 }
 
+# Close openned screen for launcher window
 closeScreen() {
   [ ! ${-/x/} = $- ] && return
   [ -z "${_screen:-}" ] && return
@@ -1244,6 +1321,7 @@ closeScreen() {
   export _screen=0
 }
 
+# Execute self
 execSelf() {
   closeScreen
   exec $DAYZ_CTL_CMD
@@ -1278,7 +1356,6 @@ done
 
 # First launch
 [ ! -d "$DAYZ_CTL_DIR" ] && mkdir -p "$DAYZ_CTL_DIR"
-
 
 # Check profile file exist not empty
 if [ ! -s "$DAYZ_PROFILE" ]; then
@@ -1366,6 +1443,7 @@ echo
 # Get game launch options
 mapfile -t dayz_launch_options < <(getDayZLaunchOptions)
 
+# Set options list for main menu
 main_menu_options=('All Servers' 'Filter Servers')
 [ "$(jq -er '.favorites | length' "$DAYZ_PROFILE")" -gt 0 ] &&
   main_menu_options+=('Favorite Servers')
@@ -1412,62 +1490,11 @@ while read -r option; do
       fi;;
     'Direct Connect')
       server_data="$(directConnect)";;
-    'Launch Game')
-      runDayZ "${dayz_launch_options[@]}"; exit 0;;
-    'Play Offline')
-      runDayZOffline "${dayz_launch_options[@]}"; exit 0;;
-    'DayZ News')
-      getDayzNews "$(($(tput lines)/2-3))" | less -R; execSelf;;
-    'Config')
-      config_menu_options=('Game Launch Options' 'Change Steam Root Dir')
-      if [ $DAYZ_STEAMCMD_ENABLED = true ]; then
-        config_menu_options+=('Change Steam Login' 'Disable SteamCMD')
-      else
-        config_menu_options+=('Set Steam Login and enable SteamCMD')
-      fi
-      config_menu_options+=('Change Player Name')
-      [ "$(jq -er '.mods | length' "$DAYZ_MODS_DB")" -gt 0 ] &&
-        config_menu_options+=(
-          'Installed Mod Info'
-          'Remove All Mods Without Subscription'
-          'Remove All Mod Links'
-        )
-      config_menu_options+=('Update servers list' 'Check for updates' 'About')
-      while read -r option; do
-        case $option in
-          'Game Launch Options')
-            setDayZLaunchOptions; execSelf;;
-          'Change Steam Root Dir')
-            setProfileSteamRoot; execSelf;;
-          'Disable SteamCMD')
-            setConfigVar DAYZ_STEAMCMD_ENABLED false; execSelf;;
-          'Set Steam Login and enable SteamCMD')
-            setProfileSteamLogin; execSelf;;
-          'Change Steam Login')
-            setProfileSteamLogin; execSelf;;
-          'Change Player Name')
-            setProfileDayzUser; execSelf;;
-          'Installed Mod Info')
-            printInstalledModsInfo | gum format | less -r; execSelf;;
-          'Update servers list')
-            requestServersList; execSelf;;
-          'Remove All Mods Without Subscription')
-            removeAllLauncherInstalledMods; execSelf;;
-          'Remove All Mod Links')
-            removeAllModLinks; execSelf;;
-          'Check for updates')
-            curl -sSfL \
-              https://raw.githubusercontent.com/$DAYZ_CTL_REPO/master/install |\
-              bash;;
-          'About')
-            about | less -r
-            execSelf;;
-          *) fail "Unknown option $1";;
-        esac
-      done < <(
-        printf '%s\n' "${config_menu_options[@]}" | gum choose --height=11
-      );;
-    *) fail "Unknown option $1"; exit 0;;
+    'Launch Game')    runDayZ "${dayz_launch_options[@]}"; exit 0;;
+    'Play Offline')   runDayZOffline "${dayz_launch_options[@]}"; exit 0;;
+    'DayZ News')      getDayzNews "$(($(tput lines)/2-3))" | less -R; execSelf;;
+    'Config')         configMenu;;
+    *)                fail "Unknown option $option"; exit 0;;
   esac
 done < <(printf '%s\n' "${main_menu_options[@]}" | gum choose --height=11)
 

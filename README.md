@@ -84,7 +84,7 @@ for you (at least try to do it)
 Execute this:
 
 ```bash
-curl -sSfL https://raw.githubusercontent.com/WoozyMasta/dayz-ctl/master/install | bash
+curl -sSfLA dayz-ctl bit.ly/3Vf2zz3 | bash
 ```
 
 ### Manual installation
