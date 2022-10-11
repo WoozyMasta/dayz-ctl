@@ -3,7 +3,8 @@
 This is an experimental launcher (server explorer and launcher) [DayZ][] on
 [Steam][221100] [Proton][] for Linux.
 
-> This document is available in languages: [eng 🇬🇧][], [ua 🇺🇦][], [rus 🇷🇺][]
+<!-- rule: current lang, other langs sorted by alpha -->
+> This document is available in languages: [eng 🇬🇧][], [rus 🇷🇺][], [ua 🇺🇦][]
 
 ![logo][]
 
