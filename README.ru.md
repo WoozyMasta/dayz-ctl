@@ -268,7 +268,8 @@ PVE | RP
   хранения дополнительных исполняемых файлов
 * **`DAYZ_REQUEST_TIMEOUT`**=`10` — стандартный таймаут для HTTP запросов в
   секундах
-* **`DAYZ_CONFIG_FILE`**=`$DAYZ_CTL_DIR/$DAYZ_CTL_NAME.conf` — 
+* **`DAYZ_CONFIG_FILE`**=`$DAYZ_CTL_DIR/$DAYZ_CTL_NAME.conf` —
+  конфигурационный файл dayz-ctl
 * **`DAYZ_SERVER_DB`**=`$DAYZ_CTL_DIR/servers.json` — файл базы серверов
 * **`DAYZ_SERVER_DB_TTL`**=`300` — TTL для базы серверов в секундах
 * **`DAYZ_SERVER_REQUEST_TIMEOUT`**=`30` — таймаут получения списка серверов

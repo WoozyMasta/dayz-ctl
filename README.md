@@ -266,7 +266,8 @@ List of available variables:
   storing additional executable files
 * **`DAYZ_REQUEST_TIMEOUT`**=`10` — standard timeout for HTTP requests in
   seconds
-* **`DAYZ_CONFIG_FILE`**=`$DAYZ_CTL_DIR/$DAYZ_CTL_NAME.conf` —
+* **`DAYZ_CONFIG_FILE`**=`$DAYZ_CTL_DIR/$DAYZ_CTL_NAME.conf` — dayz-ctl
+  configuration file
 * **`DAYZ_SERVER_DB`**=`$DAYZ_CTL_DIR/servers.json` — server database file
 * **`DAYZ_SERVER_DB_TTL`**=`300` — TTL for server database in seconds
 * **`DAYZ_SERVER_REQUEST_TIMEOUT`**=`30` — timeout for getting a list of
