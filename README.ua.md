@@ -29,58 +29,58 @@
   керуванням та статистикою за модами
 * Надає посилання з детальною інформацією про сервер на [battlemetrics][]
 
-## Preview
+Окреме спасибі [dayz-linux-cli-launcher][] за ідею та [dayzsalauncher][] за
+API.
+
+## Попередній перегляд
 
 <!-- markdownlint-disable -->
 <div style="text-align:center">
 
 > &nbsp;
 > ![](extra/dayz-ctl-demo.svg)
-> **Launcher Demo**
+> **Демонстрація лаунчера**
 
 <details>
-<summary>Больше скриншотов</summary>
+<summary>Більше скріншотів</summary>
 <table border="0" cellspacing="0" cellpadding="0" style="border: none">
 <tr>
-  <td><img width="100%" src="extra/s_main.png"/><p>Главное меню</p></td>
-  <td><img width="100%" src="extra/s_servers.png"/><p>Браузер серверов</p></td>
+  <td><img width="100%" src="extra/s_main.png"/><p>Головне меню</p></td>
+  <td><img width="100%" src="extra/s_servers.png"/><p>Браузер серверів</p></td>
 </tr>
 <tr>
-  <td><img width="100%" src="extra/s_servers_filter.png"/><p>Фильтрация серверов</p></td>
-  <td><img width="100%" src="extra/s_servers_filter_map.png"/><p>Фильтрация по карте</p></td>
+  <td><img width="100%" src="extra/s_servers_filter.png"/><p>Фільтрування серверів</p></td>
+  <td><img width="100%" src="extra/s_servers_filter_map.png"/><p>Фільтрування по карті</p></td>
 </tr>
 <tr>
-  <td><img width="100%" src="extra/s_servers_filter_applied.png"/><p>Применение фильтра</p></td>
-  <td><img width="100%" src="extra/s_servers_favorites.png"/><p>Браузер избранного</p></td>
+  <td><img width="100%" src="extra/s_servers_filter_applied.png"/><p>Застосування фільтра</p></td>
+  <td><img width="100%" src="extra/s_servers_favorites.png"/><p>Браузер вибраного</p></td>
 </tr>
 
 <tr>
-  <td><img width="100%" src="extra/s_servers_history.png"/><p>Браузер истории</p></td>
+  <td><img width="100%" src="extra/s_servers_history.png"/><p>Браузер уподобань</p></td>
   <td><img width="100%" src="extra/s_servers_search.png"/><p>Нечеткий поиск</p></td>
 </tr>
 <tr>
   <td><img width="100%" src="extra/s_offline.png"/><p>Оффлайн режим</p></td>
-  <td><img width="100%" src="extra/s_offline_mods.png"/><p>Моды для оффлайн</p></td>
+  <td><img width="100%" src="extra/s_offline_mods.png"/><p>Моди для офлайн</p></td>
 </tr>
 <tr>
-  <td><img width="100%" src="extra/s_servers_mods.png"/><p>Моды сервера</p></td>
-  <td><img width="100%" src="extra/s_mods.png"/><p>Информация о модах</p></td>
+  <td><img width="100%" src="extra/s_servers_mods.png"/><p>Моди сервера</p></td>
+  <td><img width="100%" src="extra/s_mods.png"/><p>Інформація про моди</p></td>
 </tr>
 <tr>
-  <td><img width="100%" src="extra/s_config.png"/><p>Меню конфигурации</p></td>
-  <td><img width="100%" src="extra/s_config_launch.png"/><p>Параметры запуска</p></td>
+  <td><img width="100%" src="extra/s_config.png"/><p>Меню конфігурації</p></td>
+  <td><img width="100%" src="extra/s_config_launch.png"/><p>Параметри запуску</p></td>
 </tr>
 <tr>
-  <td><img width="100%" src="extra/s_about.png"/><p>Информация</p></td>
-  <td><img width="100%" src="extra/s_news.png"/><p>Новости DayZ</p></td>
+  <td><img width="100%" src="extra/s_about.png"/><p>Інформація</p></td>
+  <td><img width="100%" src="extra/s_news.png"/><p>Новини DayZ</p></td>
 </tr>
 </table>
 </details>
 </div>
 <!-- markdownlint-enable -->
-
-Окреме спасибі [dayz-linux-cli-launcher][] за ідею та [dayzsalauncher][] за
-API.
 
 ## Особливості використання SteamCMD
 
