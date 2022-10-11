@@ -246,40 +246,103 @@ MANGOHUD=1 ENABLE_VKBASALT=1 gamemoderun %command%
 PVE | RP
 ```
 
+## Переменные окружения
+
+Вы можете более тонко управлять работой лаунчера при помощи переменных
+окружения которые вы можете передавать в окружение как обычно так и записать
+в файл конфигурации `$HOME/.local/share/dayz-ctl/dayz-ctl.conf` (по
+умолчанию)
+
+Список доступных переменных:
+
+* **`DAYZ_CTL_VERSION` — версия приложения
+* **`DAYZ_CTL_NAME`**=`dayz-ctl` — название приложения
+* **`DAYZ_GAME_ID`**=`221100` — ID игры в Steam
+* **`APPLICATIONS_DIR`**=`$HOME/.local/share/applications` — каталог для
+  хранения ярлыков приложений
+* **`DAYZ_CTL_DIR`**=`$HOME/.local/share/dayz-ctl` — рабочий каталог
+  лаунчера
+* **`DAYZ_CTL_BIN_DIR`**=`$HOME/.local/share/dayz-ctl/bin` — каталог
+  хранения дополнительных исполняемых файлов
+* **`DAYZ_REQUEST_TIMEOUT`**=`10` — стандартный таймаут для HTTP запросов в
+  секундах
+* **`DAYZ_CONFIG_FILE`**=`$DAYZ_CTL_DIR/$DAYZ_CTL_NAME.conf` — 
+* **`DAYZ_SERVER_DB`**=`$DAYZ_CTL_DIR/servers.json` — файл базы серверов
+* **`DAYZ_SERVER_DB_TTL`**=`300` — TTL для базы серверов в секундах
+* **`DAYZ_SERVER_REQUEST_TIMEOUT`**=`30` — таймаут получения списка серверов
+  в секундах
+* **`DAYZ_NEWS_DB`**=`$DAYZ_CTL_DIR/news.json` — файл базы новостей
+* **`DAYZ_NEWS_DB_TTL`**=`3600` — TTL для базы новостей в секундах
+* **`DAYZ_MODS_DB`**=`$DAYZ_CTL_DIR/mods.json` — файл базы модификаций
+* **`DAYZ_PROFILE`**=`$DAYZ_CTL_DIR/profile.json` — файл профиля
+  пользователя
+* **`DAYZ_HISTORY_SIZE`**=`10` — размер истории для обозревателя серверов
+* **`DAYZ_FZF_HISTORY`**=`$DAYZ_CTL_DIR/.$DAYZ_CTL_NAME-history` — файл
+  истории для нечеткого поиска
+* **`DAYZ_USERAGENT`**=`"$DAYZ_CTL_NAME $DAYZ_CTL_VERSION"` — User-Agent
+  используемый при HTTP запросах
+* **`DAYZ_API`**=`https://dayzsalauncher.com/api/v1` — адрес
+  [API][dayzsalauncher] для получения списка серверов
+* **`DAYZ_STEAMCMD_ENABLED`**=`true` — переключатель для включения или
+  отключения использования [SteamCMD][]
+* **`DAYZ_FILTER_MOD_LIMIT`**=`10` — величина фильтра лимита модов по
+  умолчанию
+* **`DAYZ_FILTER_PLAYERS_LIMIT`**=`50` — величина фильтра лимита игроков по
+  умолчанию
+* **`DAYZ_FILTER_PLAYERS_SLOTS`**=`60` — величина фильтра лимита слотов для
+  игроков по умолчанию
+
 ## Полезное
 
-* <https://github.com/FeralInteractive/gamemode>
-* <https://github.com/flightlessmango/MangoHud>
-* <https://github.com/DadSchoorse/vkBasalt>
-* <https://github.com/crosire/reshade-shaders>
-* <https://github.com/StuckInLimbo/OBS-ReplayBuffer-Setup>
-* <https://github.com/matanui159/ReplaySorcery>
-* <https://github.com/LunarG/VulkanTools/blob/master/vkconfig/README.md>
+* <https://github.com/FeralInteractive/gamemode> ­— может помочь с
+  производительностью игры
+* <https://github.com/flightlessmango/MangoHud> — вывод информации о
+  использовании ресурсов и позволяет ограничивать частоту кадров
+* <https://github.com/DadSchoorse/vkBasalt> ­— улучшение изображения,
+  добавляет четкости картинке
+* <https://github.com/crosire/reshade-shaders> — дополнительные шейдеры,
+  могут использоватся из vkBasalt
+* <https://github.com/StuckInLimbo/OBS-ReplayBuffer-Setup> — настройка
+  записи повторов в OBS
+* <https://github.com/matanui159/ReplaySorcery> ­— утилита для записи
+  повторов
+
+Параметры запуска игры в Steam c включенным MangoHud, vkBasalt и gamemode:
 
 ```sh
 MANGOHUD=1 ENABLE_VKBASALT=1 gamemoderun %command%
 ```
 
+Также не прибегая к сторонним утилитам вы можете вывести оверлей с
+информацией о ресурсах и ограничить FPS штатными средствами [DXVK][], к
+примеру:
+
 ```sh
-MANGOHUD=0 DXVK_HUD=fps DXVK_FRAME_RATE=60 ENABLE_VKBASALT=1 gamemoderun %command%
+DXVK_HUD=fps DXVK_FRAME_RATE=60 gamemoderun %command%
 ```
 
-`DXVK_HUD=fps` ... `DXVK_HUD=full`
+Значение `DXVK_HUD=fps` ... `DXVK_HUD=full`:
 
 * `devinfo` — отображает название графического процессора и версию драйвера.
 * `fps` — показывает текущую частоту кадров.
 * `frametimes` — показывает график времени кадра.
-* `submissions` — показывает количество командных буферов, отправленных на кадр.
-* `drawcalls` — показывает количество вызовов отрисовки и проходов рендеринга на кадр.
-* `pipelines` — показывает общее количество графических и вычислительных конвейеров.
-* `descriptors` — показывает количество пулов дескрипторов и наборов дескрипторов.
+* `submissions` — показывает количество командных буферов, отправленных на
+  кадр.
+* `drawcalls` — показывает количество вызовов отрисовки и проходов
+  рендеринга на кадр.
+* `pipelines` — показывает общее количество графических и вычислительных
+  конвейеров.
+* `descriptors` — показывает количество пулов дескрипторов и наборов
+  дескрипторов.
 * `memory` — показывает объем выделенной и используемой памяти устройства.
-* `gpuload` — показывает предполагаемую загрузку графического процессора. Может быть неточным.
+* `gpuload` — показывает предполагаемую загрузку графического процессора.
+  Может быть неточным.
 * `version` — показывает версию DXVK.
 * `api` — показывает уровень функций D3D, используемый приложением.
 * `cs` — показывает статистику рабочего потока.
 * `compiler` — показывает активность компилятора шейдера.
-* `samplers` — показывает текущее количество используемых пар сэмплеров [только для D3D9]
+* `samplers` — показывает текущее количество используемых пар сэмплеров
+  [только для D3D9]
 * `scale=x` — Масштабирует HUD в х раз (например, в 1,5)
 
 Ограничение частоты кадров `DXVK_FRAME_RATE=0`
@@ -304,6 +367,7 @@ MANGOHUD=0 DXVK_HUD=fps DXVK_FRAME_RATE=60 ENABLE_VKBASALT=1 gamemoderun %comman
 [Steam]: https://store.steampowered.com/about/
 [Proton]: https://github.com/ValveSoftware/Proton
 [Noto]: https://fonts.google.com/noto
+[DXVK]: https://github.com/doitsujin/dxvk
 
 <!-- 
 DayZ DayZSA dayzstandalone dayz standalone linux nix proton steam

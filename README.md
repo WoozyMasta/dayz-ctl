@@ -245,25 +245,78 @@ A term with a single bar character acts as an OR operator
 PVE | RP
 ```
 
+## Environment variables
+
+You can fine-tune how the launcher works with the help of environment
+variables that you can pass to the environment as usual or write to the
+configuration file `$HOME/.local/share/dayz-ctl/dayz-ctl.conf` (by default)
+
+List of available variables:
+
+* **`DAYZ_CTL_VERSION` — application version
+* **`DAYZ_CTL_NAME`**=`dayz-ctl` — application name
+* **`DAYZ_GAME_ID`**=`221100` — Steam game ID
+* **`APPLICATIONS_DIR`**=`$HOME/.local/share/applications` — directory for
+  storing application shortcuts
+* **`DAYZ_CTL_DIR`**=`$HOME/.local/share/dayz-ctl` — launcher working
+  directory
+* **`DAYZ_CTL_BIN_DIR`**=`$HOME/.local/share/dayz-ctl/bin` — directory for
+  storing additional executable files
+* **`DAYZ_REQUEST_TIMEOUT`**=`10` — standard timeout for HTTP requests in
+  seconds
+* **`DAYZ_CONFIG_FILE`**=`$DAYZ_CTL_DIR/$DAYZ_CTL_NAME.conf` —
+* **`DAYZ_SERVER_DB`**=`$DAYZ_CTL_DIR/servers.json` — server database file
+* **`DAYZ_SERVER_DB_TTL`**=`300` — TTL for server database in seconds
+* **`DAYZ_SERVER_REQUEST_TIMEOUT`**=`30` — timeout for getting a list of
+  servers in seconds
+* **`DAYZ_NEWS_DB`**=`$DAYZ_CTL_DIR/news.json` — news base file
+* **`DAYZ_NEWS_DB_TTL`**=`3600` — TTL for the news database in seconds
+* **`DAYZ_MODS_DB`**=`$DAYZ_CTL_DIR/mods.json` — modification database file
+* **`DAYZ_PROFILE`**=`$DAYZ_CTL_DIR/profile.json` — user profile file
+* **`DAYZ_HISTORY_SIZE`**=`10` - server explorer history size
+* **`DAYZ_FZF_HISTORY`**=`$DAYZ_CTL_DIR/.$DAYZ_CTL_NAME-history` — history
+  file for fuzzy search
+* **`DAYZ_USERAGENT`**=`"$DAYZ_CTL_NAME $DAYZ_CTL_VERSION"` — User-Agent
+  used for HTTP requests
+* **`DAYZ_API`**=`https://dayzsalauncher.com/api/v1` — [API][dayzsalauncher]
+  address for getting a list of servers
+* **`DAYZ_STEAMCMD_ENABLED`**=`true` - switch to enable or disable the use
+  of [SteamCMD][]
+* **`DAYZ_FILTER_MOD_LIMIT`**=`10` - default mod limit filter value
+* **`DAYZ_FILTER_PLAYERS_LIMIT`**=`50` - default player limit filter value
+* **`DAYZ_FILTER_PLAYERS_SLOTS`**=`60` — default slot limit filter value for
+  players
+
 ## Useful
 
-* <https://github.com/FeralInteractive/gamemode>
-* <https://github.com/flightlessmango/MangoHud>
-* <https://github.com/DadSchoorse/vkBasalt>
-* <https://github.com/crosire/reshade-shaders>
-* <https://github.com/StuckInLimbo/OBS-ReplayBuffer-Setup>
-* <https://github.com/matanui159/ReplaySorcery>
-* <https://github.com/LunarG/VulkanTools/blob/master/vkconfig/README.md>
+* <https://github.com/FeralInteractive/gamemode> - can help with game
+  performance
+* <https://github.com/flightlessmango/MangoHud> - displays information about
+  resource usage and allows you to limit the frame rate
+* <https://github.com/DadSchoorse/vkBasalt> - image enhancement, adds
+  clarity to the picture
+* <https://github.com/crosire/reshade-shaders> - additional shaders, can be
+  used from vkBasalt
+* <https://github.com/StuckInLimbo/OBS-ReplayBuffer-Setup> - setting up
+  replay recording in OBS
+* <https://github.com/matanui159/ReplaySorcery> - utility for recording
+  replays
+
+Steam launch options with MangoHud, vkBasalt and gamemode enabled:
 
 ```sh
 MANGOHUD=1 ENABLE_VKBASALT=1 gamemoderun %command%
 ```
 
+Also, without resorting to third-party utilities, you can display an overlay
+with information about resources and limit FPS using standard [DXVK][]
+tools, for example:
+
 ```sh
-MANGOHUD=0 DXVK_HUD=fps DXVK_FRAME_RATE=60 ENABLE_VKBASALT=1 gamemoderun %command%
+DXVK_HUD=fps DXVK_FRAME_RATE=60 gamemoderun %command%
 ```
 
-`DXVK_HUD=fps` ... `DXVK_HUD=full`
+Meaning of `DXVK_HUD=fps` ... `DXVK_HUD=full`:
 
 * `devinfo` - Displays the name of the GPU and the driver version.
 * `fps` - Shows the current frame rate.
@@ -303,6 +356,7 @@ Frame rate limit `DXVK_FRAME_RATE=0`
 [Steam]: https://store.steampowered.com/about/
 [Proton]: https://github.com/ValveSoftware/Proton
 [Noto]: https://fonts.google.com/noto
+[DXVK]: https://github.com/doitsujin/dxvk
 
 <!--
 DayZ DayZSA dayzstandalone dayz standalone linux nix proton steam
