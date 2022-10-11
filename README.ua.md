@@ -253,7 +253,7 @@ PVE | RP
 
 Список доступних змінних:
 
-* **`DAYZ_CTL_VERSION` — версія програми
+* **`DAYZ_CTL_VERSION`** — версія програми
 * **`DAYZ_CTL_NAME`**=`dayz-ctl` — назва програми
 * **`DAYZ_GAME_ID`**=`221100` — ID гри в Steam
 * **`APPLICATIONS_DIR`**=`$HOME/.local/share/applications` — каталог для

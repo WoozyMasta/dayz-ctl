@@ -253,7 +253,7 @@ configuration file `$HOME/.local/share/dayz-ctl/dayz-ctl.conf` (by default)
 
 List of available variables:
 
-* **`DAYZ_CTL_VERSION` — application version
+* **`DAYZ_CTL_VERSION`** — application version
 * **`DAYZ_CTL_NAME`**=`dayz-ctl` — application name
 * **`DAYZ_GAME_ID`**=`221100` — Steam game ID
 * **`APPLICATIONS_DIR`**=`$HOME/.local/share/applications` — directory for

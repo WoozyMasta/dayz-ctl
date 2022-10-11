@@ -255,7 +255,7 @@ PVE | RP
 
 Список доступных переменных:
 
-* **`DAYZ_CTL_VERSION` — версия приложения
+* **`DAYZ_CTL_VERSION`** — версия приложения
 * **`DAYZ_CTL_NAME`**=`dayz-ctl` — название приложения
 * **`DAYZ_GAME_ID`**=`221100` — ID игры в Steam
 * **`APPLICATIONS_DIR`**=`$HOME/.local/share/applications` — каталог для
