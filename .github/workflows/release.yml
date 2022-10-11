@@ -1,0 +1,28 @@
+name: Create Release
+on:
+  push:
+    tags:
+      - "*.**.**"
+
+jobs:
+  push_to_registries:
+    name: Create release
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: write
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            Install latest version:
+
+            ```bash
+            curl -sSfLA dayz-ctl bit.ly/3Vf2zz3 | bash
+            ```
+
+          draft: false
+          prerelease: false

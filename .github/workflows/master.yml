@@ -1,0 +1,28 @@
+name: CI
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - '**.md'
+      - '**.png'
+      - '**.jpg'
+      - '**.svg'
+      - '**.json'
+  pull_request:
+    branches: [master]
+    paths-ignore:
+      - '**.md'
+      - '**.png'
+      - '**.jpg'
+      - '**.svg'
+      - '**.json'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@1.0.0
