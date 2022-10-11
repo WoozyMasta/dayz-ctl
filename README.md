@@ -197,8 +197,8 @@ sed -e 's/▫️/•/g' -e 's/🟩/✕/g' -e 's/⬛/ /g' -e 's/🕒/time/g' -e '
 * 🟢 Debian bullseye
 * 🟢 Debian buster
 * 🟢 Ubuntu 18.04
-* 🟢 Ubuntu 20.04
-* 🟢 Ubuntu 22.04
+* 🟢 Ubuntu 20.04 💯
+* 🟢 Ubuntu 22.04 💯
 * 🟢 Fedora latest
 * 🟡 Centos 7 (small bugs)
 * 🟡 Centos stream9 (small bugs)
@@ -308,4 +308,5 @@ Frame rate limit `DXVK_FRAME_RATE=0`
 DayZ DayZSA dayzstandalone dayz standalone linux nix proton steam
 DayZ launcher Linux
 DayZ servers browser linux
+DayZ Steam Proton
 -->
