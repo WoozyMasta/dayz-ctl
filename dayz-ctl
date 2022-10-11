@@ -839,6 +839,30 @@ deleteFavoriteServerOffline() {
     "$DAYZ_PROFILE" | sponge "$DAYZ_PROFILE"
 }
 
+# Connect by IP:port from DesktopEntry
+connectFromArg() {
+  local ip=$1 game_port=$2 query_port data name exec_args=()
+
+  data="$(
+    jq -er --arg ip "$ip" --argjson port "$game_port" \
+    '.result[] | select(.endpoint.ip == $ip and .gamePort == $port) | .' \
+    "$DAYZ_SERVER_DB"
+  )" || fail "🔴 Server $ip:$port offline"
+
+  name="$(jq -er '.name' <<< "$data")"
+  query_port="$(jq -er '.endpoint.port' <<< "$data")"
+
+  gum format "Connect to \`$name\` server" "* $ip:$game_port" \
+    "$(getBattlemetricsURL "$ip" "$query_port" "$name")"
+  getNotInstalledMods "$data"
+  mapfile -t exec_args < <(
+    argsFromServerData "$data" "${dayz_launch_options[@]}"
+  )
+  addHistoryServer "$ip" "$query_port" "$name"
+  runDayZ "${exec_args[@]}"
+  exit 0
+}
+
 # Connect by IP:port
 directConnect() {
   local ip port
@@ -1072,17 +1096,12 @@ argsFromServerData() {
 createDesktopEntry() {
   local data="$1" args=("${@:2}")
   local server_name server_ip server_game_port launch_file
-  local base_args=() exec_args=()
 
   # Get server data
   server_name="$(jq -er '.name' <<< "$data")"
   server_ip="$(jq -er '.endpoint.ip' <<< "$data")"
   server_game_port="$(jq -er '.gamePort' <<< "$data")"
 
-  # Set base launch options
-  base_args=(steam -applaunch "$DAYZ_GAME_ID" -nolauncher -name "$dayz_user")
-  # Set extra args from server data
-  mapfile -t exec_args < <(argsFromServerData "$data" "${args[@]}")
   # Launch file path
   launch_file="$APPLICATIONS_DIR/dayz-cli-$server_ip-$server_game_port.desktop"
 
@@ -1093,9 +1112,9 @@ Name=DayZ - $(
     --value="$server_name" --placeholder="$server_name"
 )
 Comment=Play DayZ on Steam ($server_name)
-Exec=${base_args[*]} ${exec_args[*]}
+Exec=$DAYZ_CTL_CMD connect $server_ip $server_game_port
 Icon=steam_icon_$DAYZ_GAME_ID
-Terminal=false
+Terminal=true
 Type=Application
 Categories=Game;
 DesktopEntry
@@ -1103,9 +1122,10 @@ DesktopEntry
   chmod +x "$launch_file"
 }
 
-# Find server in Battlemetrics by ip, port, name and return URL
+# Find server in Battlemetrics by ip, query port, name and return URL
 getBattlemetricsURL () {
- local ip="$1" port="$2" name="$3"
+  set -x
+  local ip="$1" port="$2" name="$3"
   curl -GsLA "$DAYZ_USERAGENT" -m "$DAYZ_REQUEST_TIMEOUT" \
     'https://api.battlemetrics.com/servers' \
     -d "page[size]=10" \
@@ -1429,6 +1449,14 @@ updateModsDB &
 checkServersList &
 wait
 
+# Get game launch options
+mapfile -t dayz_launch_options < <(getDayZLaunchOptions)
+
+if [ $# -eq 3 ] && [ "$1" == connect ]; then
+  closeScreen
+  connectFromArg "$2" "$3"
+fi
+
 # Print news
 getDayzNews
 
@@ -1441,9 +1469,6 @@ jq -er --arg login "${steam_login:-anonymous}" --arg player "$dayz_user" \
 - **Servers online**:\t`\(.result | length)`"
 ' "$DAYZ_SERVER_DB" | gum format
 echo
-
-# Get game launch options
-mapfile -t dayz_launch_options < <(getDayZLaunchOptions)
 
 # Set options list for main menu
 main_menu_options=('All Servers' 'Filter Servers')
