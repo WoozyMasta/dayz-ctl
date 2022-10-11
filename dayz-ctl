@@ -55,11 +55,13 @@ declare -A dependencies=(
   [gum]=https://github.com/charmbracelet/gum
   [fzf]=https://github.com/junegunn/fzf
 )
+# Game launch options
+declare -a dayz_launch_options=()
 
 # GUM colors
 export GUM_SPIN_SPINNER=meter
 export GUM_INPUT_WIDTH=80
-export GUM_CHOOSE_CURSOR_PREFIX='▫️  '
+export GUM_CHOOSE_CURSOR_PREFIX='⬜ '
 export GUM_CHOOSE_SELECTED_PREFIX='🟩 '
 export GUM_CHOOSE_UNSELECTED_PREFIX='⬛ '
 # FZF colors
@@ -346,7 +348,7 @@ applyServerFiltres() {
 
   while read -u 3 -r filter; do
     case $filter in
-      'Filter by Map...')
+      'Filter by Map'*)
         map=$(gum choose < <(
           jq -er '
             .result | map(.map) |

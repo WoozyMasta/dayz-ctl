@@ -29,21 +29,58 @@ Key Features:
   controls and statistics
 * Provides a link with detailed server information to [battlemetrics][]
 
-<center>
-<div style="text-align:center">
-
-![](extra/dayz-ctl.gif)
-
-| ![](extra/1.jpg) | ![](extra/3.jpg)  | ![](extra/4.jpg)  |
-| ---------------- | ----------------- | ----------------- |
-| ![](extra/2.jpg) | ![](extra/6.jpg)  | ![](extra/11.jpg) |
-| ![](extra/8.jpg) | ![](extra/9.jpg)  | ![](extra/10.jpg) |
-| ![](extra/7.jpg) | ![](extra/12.jpg) | ![](extra/13.jpg) |
-</div>
-</center>
-
 Special thanks to [dayz-linux-cli-launcher][] for the idea and
 [dayzsalauncher][] for the API.
+
+## Preview
+
+<!-- markdownlint-disable -->
+<div style="text-align:center">
+
+> &nbsp;
+> ![](extra/dayz-ctl-demo.svg)
+> **Launcher Demo**
+
+<details>
+<summary>More screenshots</summary>
+<table border="0" cellspacing="0" cellpadding="0" style="border: none">
+<tr>
+  <td><img width="100%" src="extra/s_main.png"/><p>Main menu</p></td>
+  <td><img width="100%" src="extra/s_servers.png"/><p>Server browser</p></td>
+</tr>
+<tr>
+  <td><img width="100%" src="extra/s_servers_filter.png"/><p>Server filters</p></td>
+  <td><img width="100%" src="extra/s_servers_filter_map.png"/><p>Filter by map</p></td>
+</tr>
+<tr>
+  <td><img width="100%" src="extra/s_servers_filter_applied.png"/><p>Applied selected filters</p></td>
+  <td><img width="100%" src="extra/s_servers_favorites.png"/><p>Favorites browser</p></td>
+</tr>
+
+<tr>
+  <td><img width="100%" src="extra/s_servers_history.png"/><p>History browser</p></td>
+  <td><img width="100%" src="extra/s_servers_search.png"/><p>Fuzzy search</p></td>
+</tr>
+<tr>
+  <td><img width="100%" src="extra/s_offline.png"/><p>Offline mode</p></td>
+  <td><img width="100%" src="extra/s_offline_mods.png"/><p>Mods for offline</p></td>
+</tr>
+<tr>
+  <td><img width="100%" src="extra/s_servers_mods.png"/><p>Server mods</p></td>
+  <td><img width="100%" src="extra/s_mods.png"/><p>Mods info</p></td>
+</tr>
+<tr>
+  <td><img width="100%" src="extra/s_config.png"/><p>Config menu</p></td>
+  <td><img width="100%" src="extra/s_config_launch.png"/><p>Launch options</p></td>
+</tr>
+<tr>
+  <td><img width="100%" src="extra/s_about.png"/><p>About menu</p></td>
+  <td><img width="100%" src="extra/s_news.png"/><p>DayZ News</p></td>
+</tr>
+</table>
+</details>
+</div>
+<!-- markdownlint-enable -->
 
 ## Features of using SteamCMD
 
