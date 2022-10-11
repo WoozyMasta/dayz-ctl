@@ -1,7 +1,7 @@
 # DayZ Command Line Launcher
 
-This is an experimental launcher (server explorer and launcher) [DayZ][] on
-[Steam][221100] [Proton][] for Linux.
+**dayz-ctl** — this is an experimental launcher (server explorer and launcher)
+[DayZ][] on [Steam][221100] [Proton][] for Linux.
 
 <!-- rule: current lang, other langs sorted by alpha -->
 > This document is available in languages: [eng 🇬🇧][], [rus 🇷🇺][], [ua 🇺🇦][]
