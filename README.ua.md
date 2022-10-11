@@ -29,18 +29,55 @@
   керуванням та статистикою за модами
 * Надає посилання з детальною інформацією про сервер на [battlemetrics][]
 
-<center>
+## Preview
+
+<!-- markdownlint-disable -->
 <div style="text-align:center">
 
-![](extra/dayz-ctl.gif)
+> &nbsp;
+> ![](extra/dayz-ctl-demo.svg)
+> **Launcher Demo**
 
-| ![](extra/1.jpg) | ![](extra/3.jpg)  | ![](extra/4.jpg)  |
-| ---------------- | ----------------- | ----------------- |
-| ![](extra/2.jpg) | ![](extra/6.jpg)  | ![](extra/11.jpg) |
-| ![](extra/8.jpg) | ![](extra/9.jpg)  | ![](extra/10.jpg) |
-| ![](extra/7.jpg) | ![](extra/12.jpg) | ![](extra/13.jpg) |
+<details>
+<summary>Больше скриншотов</summary>
+<table border="0" cellspacing="0" cellpadding="0" style="border: none">
+<tr>
+  <td><img width="100%" src="extra/s_main.png"/><p>Главное меню</p></td>
+  <td><img width="100%" src="extra/s_servers.png"/><p>Браузер серверов</p></td>
+</tr>
+<tr>
+  <td><img width="100%" src="extra/s_servers_filter.png"/><p>Фильтрация серверов</p></td>
+  <td><img width="100%" src="extra/s_servers_filter_map.png"/><p>Фильтрация по карте</p></td>
+</tr>
+<tr>
+  <td><img width="100%" src="extra/s_servers_filter_applied.png"/><p>Применение фильтра</p></td>
+  <td><img width="100%" src="extra/s_servers_favorites.png"/><p>Браузер избранного</p></td>
+</tr>
+
+<tr>
+  <td><img width="100%" src="extra/s_servers_history.png"/><p>Браузер истории</p></td>
+  <td><img width="100%" src="extra/s_servers_search.png"/><p>Нечеткий поиск</p></td>
+</tr>
+<tr>
+  <td><img width="100%" src="extra/s_offline.png"/><p>Оффлайн режим</p></td>
+  <td><img width="100%" src="extra/s_offline_mods.png"/><p>Моды для оффлайн</p></td>
+</tr>
+<tr>
+  <td><img width="100%" src="extra/s_servers_mods.png"/><p>Моды сервера</p></td>
+  <td><img width="100%" src="extra/s_mods.png"/><p>Информация о модах</p></td>
+</tr>
+<tr>
+  <td><img width="100%" src="extra/s_config.png"/><p>Меню конфигурации</p></td>
+  <td><img width="100%" src="extra/s_config_launch.png"/><p>Параметры запуска</p></td>
+</tr>
+<tr>
+  <td><img width="100%" src="extra/s_about.png"/><p>Информация</p></td>
+  <td><img width="100%" src="extra/s_news.png"/><p>Новости DayZ</p></td>
+</tr>
+</table>
+</details>
 </div>
-</center>
+<!-- markdownlint-enable -->
 
 Окреме спасибі [dayz-linux-cli-launcher][] за ідею та [dayzsalauncher][] за
 API.
