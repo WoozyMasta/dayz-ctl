@@ -1124,7 +1124,6 @@ DesktopEntry
 
 # Find server in Battlemetrics by ip, query port, name and return URL
 getBattlemetricsURL () {
-  set -x
   local ip="$1" port="$2" name="$3"
   curl -GsLA "$DAYZ_USERAGENT" -m "$DAYZ_REQUEST_TIMEOUT" \
     'https://api.battlemetrics.com/servers' \
