@@ -1259,7 +1259,7 @@ updateAllMods() {
   # Update game
   gum spin --title "Update DayZ game..." -- \
     steamcmd +@ShutdownOnFailedCommand 1 +login "$steam_login" \
-      +app_update "$DAYZ_GAME_ID" validate +quit ||
+      +app_update "$DAYZ_GAME_ID" +quit ||
     fail "ReLogin in Steam please:" "steamcmd +login $steam_login +quit"
   # Update mods
   while IFS=$'\t' read -r id name _; do
