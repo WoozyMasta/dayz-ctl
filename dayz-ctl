@@ -349,7 +349,7 @@ applyServerFiltres() {
   while read -u 3 -r filter; do
     case $filter in
       'Filter by Map'*)
-        map=$(gum choose < <(
+        map=$(gum choose --height="$(($(tput lines)-8))" < <(
           jq -er '
             .result | map(.map) |
             reduce .[] as $i ({};setpath([$i]; getpath([$i]) + 1)) |
@@ -414,7 +414,8 @@ applyServerFiltres() {
     esac
   done 3< <(
     printf '%s\n' "${available_filters[@]}" | \
-    gum choose --no-limit --height=11
+      gum choose --no-limit \
+        --height="$(menuHeight $((${#available_filters[@]}/2)))"
   )
 
   select="select($(printf '(%s) and ' "${filters[@]}")) |"
@@ -1253,6 +1254,23 @@ removeAllModLinks() {
   fi
 }
 
+# Update game and all installed mods force
+updateAllMods() {
+  # Update game
+  gum spin --title "Update DayZ game..." -- \
+    steamcmd +@ShutdownOnFailedCommand 1 +login "$steam_login" \
+      +app_update "$DAYZ_GAME_ID" validate +quit ||
+    fail "ReLogin in Steam please:" "steamcmd +login $steam_login +quit"
+  # Update mods
+  while IFS=$'\t' read -r id name _; do
+    workshopDownload "$id" "$name" Update
+  done < <(jq -er '.mods[] | [.id, .name] | @tsv' "$DAYZ_MODS_DB")
+
+  closeSteamClient
+  getInstalledMods
+  printInstalledModsInfo | gum format | less -r
+}
+
 # Get updates
 getUpdates() {
   exec curl -sSfLA "$DAYZ_USERAGENT" -m "$DAYZ_SERVER_REQUEST_TIMEOUT" \
@@ -1278,6 +1296,8 @@ configMenu() {
       'Remove manged mods'
       'Remove all mod links'
     )
+    [ $DAYZ_STEAMCMD_ENABLED = true ] &&
+      config_menu_options+=('Force update game and all mods')
   fi
   # Base options #3
   config_menu_options+=('Update servers list' 'Check for updates' 'About')
@@ -1294,13 +1314,15 @@ configMenu() {
       'Installed mod info')    printInstalledModsInfo | gum format | less -r;;
       'Remove manged mods')    removeAllLauncherInstalledMods;;
       'Remove all mod links')  removeAllModLinks;;
+      'Force update game and all mods') updateAllMods;;
       'Update servers list')   requestServersList;;
       'Check for updates')     getUpdates; exit 0;;
       'About')                 about | less -r;;
       *)                       fail "Unknown option $option";;
     esac
   done < <(
-    printf '%s\n' "${config_menu_options[@]}" | gum choose --height=11
+    printf '%s\n' "${config_menu_options[@]}" | \
+      gum choose --height="$(menuHeight ${#config_menu_options[@]})"
   )
   execSelf
 }
@@ -1323,6 +1345,20 @@ about() {
     "Thanks to https://dayzsalauncher.com for the API" \
     "[$DAYZ_CTL_NAME project](https://github.com/$DAYZ_CTL_REPO)"\
     "WoozyMasta <me@woozymasta.ru>"
+}
+
+# Menus choose items with margin
+menuHeight() {
+  local height=$1 margin=${2:-6} lines
+  lines=$(($(tput lines)-margin))
+
+  if [ $lines -gt "$height" ]; then
+    echo "$height"
+  elif [ $lines -le "$margin" ]; then
+    echo $(((height/3)+(height%3)))
+  else
+    echo $(((height/2)+(height%2)))
+  fi
 }
 
 # Open screen for launcher window
@@ -1456,19 +1492,6 @@ if [ $# -eq 3 ] && [ "$1" == connect ]; then
   connectFromArg "$2" "$3"
 fi
 
-# Print news
-getDayzNews
-
-# Print stats
-jq -er --arg login "${steam_login:-anonymous}" --arg player "$dayz_user" \
-  --argjson steamcmd "${DAYZ_STEAMCMD_ENABLED,,}" \
-'"\(if $steamcmd then "- **Steam Login**:\t`\($login)`" else "" end)
-- **Player Name**:\t`\($player)`
-- **Players online**:\t`\(.playersOnline)`
-- **Servers online**:\t`\(.result | length)`"
-' "$DAYZ_SERVER_DB" | gum format
-echo
-
 # Set options list for main menu
 main_menu_options=('All Servers' 'Filter Servers')
 [ "$(jq -er '.favorites | length' "$DAYZ_PROFILE")" -gt 0 ] &&
@@ -1482,6 +1505,19 @@ main_menu_options+=(
   'DayZ News'
   'Config'
 )
+
+# Print news
+getDayzNews "$((($(tput lines)-${#main_menu_options[@]}-12)/2))"
+
+# Print stats
+jq -er --arg login "${steam_login:-anonymous}" --arg player "$dayz_user" \
+  --argjson steamcmd "${DAYZ_STEAMCMD_ENABLED,,}" \
+'"\(if $steamcmd then "- **Steam Login**:\t`\($login)`" else "" end)
+- **Player Name**:\t`\($player)`
+- **Players online**:\t`\(.playersOnline)`
+- **Servers online**:\t`\(.result | length)`"
+' "$DAYZ_SERVER_DB" | gum format
+echo
 
 # Main selection window
 while read -r option; do
@@ -1522,7 +1558,10 @@ while read -r option; do
     'Config')         configMenu;;
     *)                fail "Unknown option $option"; exit 0;;
   esac
-done < <(printf '%s\n' "${main_menu_options[@]}" | gum choose --height=11)
+done < <(
+  printf '%s\n' "${main_menu_options[@]}" | \
+    gum choose --height="$(menuHeight ${#main_menu_options[@]})"
+)
 
 closeScreen
 # Exit if not data present
