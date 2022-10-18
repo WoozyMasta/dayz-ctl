@@ -92,6 +92,7 @@ if [ "$EUID" -eq 0 ]; then
   else
     bin_path='/bin'
   fi
+  steamcmd_path="/usr/share/steamcmd"
 else
   if [ -d "$HOME/.local/bin" ]; then
     bin_path="$HOME/.local/bin"
@@ -99,6 +100,7 @@ else
     bin_path="$DAYZ_CTL_BIN_DIR"
     mkdir -p "$DAYZ_CTL_BIN_DIR"
   fi
+  steamcmd_path="$DAYZ_CTL_DIR/steamcmd"
   package_su="sudo"
 fi
 
@@ -160,14 +162,30 @@ done
 if ! command -v steamcmd &>/dev/null; then
   printf '%s\t(%s)\n' 'Install: SteamCMD' \
     'https://developer.valvesoftware.com/wiki/SteamCMD'
-  mkdir -p "$DAYZ_CTL_DIR/steamcmd"
+
+  mkdir -p "$steamcmd_path"
   tempfile=$(mktemp "steamcmd.tar.gz.tmp.XXXXXXXX")
   trap 'rm -rf -- "$tempfile"' EXIT
   curl -#fLo "$tempfile" \
     http://media.steampowered.com/client/installer/steamcmd_linux.tar.gz
-  tar fxz "$tempfile" -C "$DAYZ_CTL_DIR/steamcmd"
-  [ ! -h "$bin_path/steamcmd" ] && \
-    ln -s "$DAYZ_CTL_DIR/steamcmd/steamcmd.sh" "$bin_path/steamcmd"
+  tar fxz "$tempfile" -C "$steamcmd_path"
+  rm -rf -- "$tempfile"
+
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    "export LD_LIBRARY_PATH=\"$steamcmd_path/linux32:${LD_LIBRARY_PATH:-}\"" \
+    "exec \"$steamcmd_path/linux32/steamcmd\" \"\$@\"" > \
+    "$bin_path/steamcmd"
+  chmod +x "$bin_path/steamcmd"
+
+  "$bin_path/steamcmd" +@ShutdownOnFailedCommand 1 +quit || steamcmd_rc=$?
+  if [ $steamcmd_rc -ne 42 ]; then
+    rm -r -- "$bin_path/steamcmd" "$steamcmd_path"
+    fail 'There is something wrong with SteamCMD installation,' \
+      'try installing it yourself:' \
+      'https://developer.valvesoftware.com/wiki/SteamCMD'
+  fi
+
   installed_packages+=(steamcmd)
 fi
 
