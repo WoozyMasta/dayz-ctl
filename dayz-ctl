@@ -1017,7 +1017,7 @@ runDayZOffline() {
     done
   fi
 
-  if ! gum confirm --affirmative='Enable Spawn' --negative='Disable Spawn' \
+  if gum confirm --affirmative='Enable Spawn' --negative='Disable Spawn' \
     --prompt.border=hidden \
     "Toggle loot and infected spawn"
   then
