@@ -45,37 +45,37 @@
 <div style="text-align:center">
 <table border="0" cellspacing="0" cellpadding="0" style="border: none">
 <tr>
-  <td><img width="100%" src="extra/s_main.png"/><p>Главное меню</p></td>
-  <td><img width="100%" src="extra/s_servers.png"/><p>Браузер серверов</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_main.png"/><p>Главное меню</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_servers.png"/><p>Браузер серверов</p></td>
 </tr>
 <tr>
-  <td><img width="100%" src="extra/s_servers_filter.png"/><p>Фильтрация серверов</p></td>
-  <td><img width="100%" src="extra/s_servers_filter_map.png"/><p>Фильтрация по карте</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_servers_filter.png"/><p>Фильтрация серверов</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_servers_filter_map.png"/><p>Фильтрация по карте</p></td>
 </tr>
 <tr>
-  <td><img width="100%" src="extra/s_servers_filter_applied.png"/><p>Применение фильтра</p></td>
-  <td><img width="100%" src="extra/s_servers_favorites.png"/><p>Браузер избранного</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_servers_filter_applied.png"/><p>Применение фильтра</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_servers_favorites.png"/><p>Браузер избранного</p></td>
 </tr>
 
 <tr>
-  <td><img width="100%" src="extra/s_servers_history.png"/><p>Браузер истории</p></td>
-  <td><img width="100%" src="extra/s_servers_search.png"/><p>Нечеткий поиск</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_servers_history.png"/><p>Браузер истории</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_servers_search.png"/><p>Нечеткий поиск</p></td>
 </tr>
 <tr>
-  <td><img width="100%" src="extra/s_offline.png"/><p>Оффлайн режим</p></td>
-  <td><img width="100%" src="extra/s_offline_mods.png"/><p>Моды для оффлайн</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_offline.png"/><p>Оффлайн режим</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_offline_mods.png"/><p>Моды для оффлайн</p></td>
 </tr>
 <tr>
-  <td><img width="100%" src="extra/s_servers_mods.png"/><p>Моды сервера</p></td>
-  <td><img width="100%" src="extra/s_mods.png"/><p>Информация о модах</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_servers_mods.png"/><p>Моды сервера</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_mods.png"/><p>Информация о модах</p></td>
 </tr>
 <tr>
-  <td><img width="100%" src="extra/s_config.png"/><p>Меню конфигурации</p></td>
-  <td><img width="100%" src="extra/s_config_launch.png"/><p>Параметры запуска</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_config.png"/><p>Меню конфигурации</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_config_launch.png"/><p>Параметры запуска</p></td>
 </tr>
 <tr>
-  <td><img width="100%" src="extra/s_about.png"/><p>Информация</p></td>
-  <td><img width="100%" src="extra/s_news.png"/><p>Новости DayZ</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_about.png"/><p>Информация</p></td>
+  <td><img loading="lazy" width="100%" src="extra/s_news.png"/><p>Новости DayZ</p></td>
 </tr>
 </table>
 </div>
