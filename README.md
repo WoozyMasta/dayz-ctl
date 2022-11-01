@@ -228,6 +228,7 @@ You can enter multiple search terms separated by spaces. e.g. `^namalsk DE
 !PVE !RP`
 
 <!-- markdownlint-disable MD013 -->
+
 | token     | match type                 | description                          |
 | --------- | -------------------------- | ------------------------------------ |
 | `sbtrkt`  | fuzzy match                | Items that match `sbtrkt`            |
@@ -237,6 +238,7 @@ You can enter multiple search terms separated by spaces. e.g. `^namalsk DE
 | `!fire`   | inverse-exact-match        | Items that do not include `fire`     |
 | `!^music` | inverse-prefix-exact-match | Items that do not start with `music` |
 | `!.mp3$`  | inverse-suffix-exact-match | Items that do not end with `.mp3`    |
+
 <!-- markdownlint-enable MD013 -->
 
 A term with a single bar character acts as an OR operator
