@@ -35,15 +35,13 @@ Special thanks to [dayz-linux-cli-launcher][] for the idea and
 
 ## Preview
 
-<!-- markdownlint-disable -->
-<div style="text-align:center">
-
-> &nbsp;
-> ![](extra/dayz-ctl-demo.svg)
+> ![Launcher Demo](extra/dayz-ctl-demo.svg)
 > **Launcher Demo**
 
+<!-- markdownlint-disable -->
 <details>
-<summary>More screenshots</summary>
+<summary>More screenshots 👈</summary>
+<div style="text-align:center">
 <table border="0" cellspacing="0" cellpadding="0" style="border: none">
 <tr>
   <td><img width="100%" src="extra/s_main.png"/><p>Main menu</p></td>
@@ -79,8 +77,8 @@ Special thanks to [dayz-linux-cli-launcher][] for the idea and
   <td><img width="100%" src="extra/s_news.png"/><p>DayZ News</p></td>
 </tr>
 </table>
-</details>
 </div>
+</details>
 <!-- markdownlint-enable -->
 
 ## Features of using SteamCMD

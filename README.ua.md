@@ -35,15 +35,13 @@ API.
 
 ## Попередній перегляд
 
-<!-- markdownlint-disable -->
-<div style="text-align:center">
-
-> &nbsp;
-> ![](extra/dayz-ctl-demo.svg)
+> ![Демонстрація лаунчера](extra/dayz-ctl-demo.svg)
 > **Демонстрація лаунчера**
 
+<!-- markdownlint-disable -->
 <details>
-<summary>Більше скріншотів</summary>
+<summary>Більше скріншотів 👈</summary>
+<div style="text-align:center">
 <table border="0" cellspacing="0" cellpadding="0" style="border: none">
 <tr>
   <td><img width="100%" src="extra/s_main.png"/><p>Головне меню</p></td>
@@ -79,8 +77,8 @@ API.
   <td><img width="100%" src="extra/s_news.png"/><p>Новини DayZ</p></td>
 </tr>
 </table>
-</details>
 </div>
+</details>
 <!-- markdownlint-enable -->
 
 ## Особливості використання SteamCMD

@@ -36,15 +36,13 @@
 
 ## Предварительный просмотр
 
-<!-- markdownlint-disable -->
-<div style="text-align:center">
-
-> &nbsp;
-> ![](extra/dayz-ctl-demo.svg)
+> ![Демонстрация лаунчера](extra/dayz-ctl-demo.svg)
 > **Демонстрация лаунчера**
 
+<!-- markdownlint-disable -->
 <details>
-<summary>Больше скриншотов</summary>
+<summary>Больше скриншотов 👈</summary>
+<div style="text-align:center">
 <table border="0" cellspacing="0" cellpadding="0" style="border: none">
 <tr>
   <td><img width="100%" src="extra/s_main.png"/><p>Главное меню</p></td>
@@ -80,8 +78,8 @@
   <td><img width="100%" src="extra/s_news.png"/><p>Новости DayZ</p></td>
 </tr>
 </table>
-</details>
 </div>
+</details>
 <!-- markdownlint-enable -->
 
 ## Особенности использования SteamCMD
