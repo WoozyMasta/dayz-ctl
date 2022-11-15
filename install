@@ -105,11 +105,7 @@ else
 fi
 
 # Set right path for alredy present dayz-ctl bin
-if command -v dayz-ctl 2>/dev/null; then
-  dayz_bin_path="$(dirname "$(command -v dayz-ctl)")"
-else
-  dayz_bin_path="$bin_path"
-fi
+dayz_bin_path=$(command -v dayz-ctl 2>/dev/null) || dayz_bin_path="$bin_path"
 
 # Set package manager command for install
 for manger in "${!package_manageers[@]}"; do
@@ -205,9 +201,10 @@ ghInstall gum charmbracelet v$gum_version/gum_${gum_version}_linux_x86_64.tar.gz
 
 # Install dayz-ctl
 printf '%s\t(%s)\n' 'Install: Dayz CTL' 'https://github.com/WoozyMasta/dayz-ctl'
-curl -#fLo "$dayz_bin_path/dayz-ctl" "$raw_url/$DAYZ_CTL_VERSION/dayz-ctl" ||
+curl -#fLo "${dayz_bin_path%/*}/dayz-ctl" \
+  "$raw_url/$DAYZ_CTL_VERSION/dayz-ctl" ||
   fail "Can't download dayz-ctl from https://github.com/WoozyMasta/dayz-ctl"
-chmod +x "$dayz_bin_path/dayz-ctl"
+chmod +x "${dayz_bin_path%/*}/dayz-ctl"
 installed_packages+=(dayz-ctl)
 
 # Check dayz-ctl installed success
