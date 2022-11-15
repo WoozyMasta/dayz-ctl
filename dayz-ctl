@@ -663,7 +663,7 @@ getInstalledMods() {
     [ ! -f "$mod" ] && continue
     name="$(grep -Po 'name\s*=\s*"\K(.*)(?="\s*;)' "$mod")"
     id="$(grep -Po 'publishedid\s*=\s*\K(\d+)(?=\s*;)' "$mod")"
-    ts="$(grep -Po 'timestamp\s*=\s*\K(\d+)(?=\s*;)' "$mod")"
+    ts="$(grep -Po 'timestamp\s*=\s*-?\K(\d+)(?=\s*;)' "$mod" || echo "0")"
     size="$(du -bd0 "${mod%/*}" | cut -f1)"
     data+="{\"name\":\"$name\", \"id\":$id, \"timestamp\":$ts, \"size\":$size}"
   done
