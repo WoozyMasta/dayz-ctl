@@ -11,7 +11,7 @@ DAYZ_CTL_CMD="$(
   cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)/$(basename "${BASH_SOURCE[0]}"
 )"
 DAYZ_CTL_REPO=WoozyMasta/dayz-ctl
-: "${DAYZ_CTL_VERSION:=0.1.0}"
+: "${DAYZ_CTL_VERSION:=0.1.2}"
 : "${DAYZ_CTL_NAME:=${0##*/}}"
 : "${DAYZ_GAME_ID:=221100}"
 
