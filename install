@@ -106,7 +106,7 @@ fi
 
 # Set right path for alredy present dayz-ctl bin
 if command -v dayz-ctl 2>/dev/null; then
-  dayz_bin_path="$(dirname" $(command -v dayz-ctl)")"
+  dayz_bin_path="$(dirname "$(command -v dayz-ctl)")"
 else
   dayz_bin_path="$bin_path"
 fi
