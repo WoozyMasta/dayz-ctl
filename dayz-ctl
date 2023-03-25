@@ -516,7 +516,7 @@ fzfServers() {
     .[] | '"$filter"' [.key, .value.name] | @tsv
   ' "$DAYZ_SERVER_DB" | \
   fzf --delimiter '\t' --with-nth 2 \
-    --preview 'fzfPreview {1}' --preview-window=$preview | \
+    --preview 'bash -c "fzfPreview {1}"' --preview-window=$preview | \
   cut -f1
 }
 
@@ -815,12 +815,12 @@ getFavoriteServers() {
     done
     printf '%s\n' "${history[@]}" | sort -nr | \
     fzf --delimiter '\t' --with-nth 4 \
-      --preview 'fzfPreview {3}' --preview-window=right | \
+      --preview 'bash -c "fzfPreview {3}"' --preview-window=right | \
     cut -f3-4
   else
     printf '%s\n' "${online[@]}" "${offline[@]}" | \
     fzf --delimiter '\t' --with-nth 3 \
-      --preview 'fzfPreview {2}' --preview-window=right | \
+      --preview 'bash -c "fzfPreview {2}"' --preview-window=right | \
     cut -f2-3
   fi
 }
