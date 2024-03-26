@@ -330,12 +330,15 @@ applyServerFiltres() {
     'Oficial Server' 'Moded' "Mods < $DAYZ_FILTER_MOD_LIMIT ..."
     'Without Password' 'First Person' 'Day Time' 'With BattlEye'
     'With Players' "Players > $DAYZ_FILTER_PLAYERS_LIMIT% ..." 'Not Full'
-    'Filter by Map ...'
     # Second page
     'Not Oficial Server' 'Not Moded' "Mods > $DAYZ_FILTER_MOD_LIMIT ..."
     'With Password' 'Third Person' 'Night Time' 'Without BattlEye'
     'Without Players' "Players < $DAYZ_FILTER_PLAYERS_LIMIT% ..." 'Full'
+    # Third page
     "Player slots ≥ $DAYZ_FILTER_PLAYERS_SLOTS ..."
+    'Filter by Top of Maps ...' 'Filter by Map Name ...'
+    'Filter by Top of Mods ...' 'Filter by Mod ID ...' 'Filter by Mod Name ...'
+    'Linux Servers' 'Windows Servers'
   ) filters=()
 
   # '✅	Oficial Server' '🛠️	Moded' "⬆️	Mods > $DAYZ_FILTER_MOD_LIMIT"
@@ -345,10 +348,11 @@ applyServerFiltres() {
   # '❌	Not Oficial Server' '⚙️	Not Moded' "⬇️	Mods < $DAYZ_FILTER_MOD_LIMIT"
   # '🔒	With Password' '👥	Third Person' '🌙	Night Time' '⚠️	Without BattlEye'
   # '💤	Without Players' "📉	Players < $DAYZ_FILTER_PLAYERS_LIMIT%" '🚫	Full'
+  # '🐧 Linux Servers' '🪟 Windows Servers'
 
   while read -u 3 -r filter; do
     case $filter in
-      'Filter by Map'*)
+      'Filter by Top of Maps'*)
         map=$(gum choose --height="$(($(tput lines)-8))" < <(
           jq -er '
             .result | map(.map) |
@@ -357,6 +361,15 @@ applyServerFiltres() {
           ' "$DAYZ_SERVER_DB"
         ))
         filters+=(".value.map==\"$map\"");;
+      'Filter by Top of Mods'*)
+        mod_top=$(gum choose --height="$(($(tput lines)-8))" < <(
+          jq -er '
+            .result | map(.mods[].name) |
+            reduce .[] as $i ({};setpath([$i]; getpath([$i]) + 1)) |
+            to_entries | sort_by(.value) | reverse[] | .key
+          ' "$DAYZ_SERVER_DB"
+        ))
+        filters+=(".value.mods[].name==\"$mod_top\"");;
       'Oficial Server')     filters+=('.value.shard=="public"');;
       'Not Oficial Server') filters+=('.value.shard!="public"');;
       'Moded')              filters+=('.value.mods | length > 0');;
@@ -371,6 +384,8 @@ applyServerFiltres() {
       'Full')               filters+=('.value.players >= .value.maxPlayers');;
       'With BattlEye')      filters+=('.value.battlEye');;
       'Without BattlEye')   filters+=('.value.battlEye==false');;
+      'Linux Servers')      filters+=('.value.environment=="l"');;
+      'Windows Servers')     filters+=('.value.environment!="l"');;
       'Day Time')           filters+=(
           'def d:(.value.time | split(":")[0] | tonumber); d >= 6 and d <= 18'
         );;
@@ -411,11 +426,31 @@ applyServerFiltres() {
             --char-limit 3 --value "$DAYZ_FILTER_PLAYERS_SLOTS"
         )"
         filters+=(".value.maxPlayers >= $count");;
+      'Filter by Map Name'*)
+        request_map="$(
+          gum input --prompt 'Part or exact map name: ' \
+            --char-limit 256 --value 'Utes'
+        )"
+        filters+=(".value.map | test(\"${request_map,,}\"; \"i\")");;
+      'Filter by Mod ID'*)
+        request_mod="$(
+          gum input --prompt 'Part or exact ID for a mod from the workshop: ' \
+            --char-limit 10 --value '3098891860'
+        )"
+        filters+=(".value.mods[].steamWorkshopId | contains($request_mod)");;
+      'Filter by Mod Name'*)
+        request_mod="$(
+          gum input --prompt 'Part or exact Name for a mod from the workshop: ' \
+            --char-limit 256 --value 'ts4ta:core'
+        )"
+        filters+=(
+          ".value.mods[].name | test(\"${request_mod,,}\"; \"i\")"
+        );;
     esac
   done 3< <(
     printf '%s\n' "${available_filters[@]}" | \
       gum choose --no-limit \
-        --height="$(menuHeight $((${#available_filters[@]}/2)))"
+        --height="$(menuHeight 10)" # $((${#available_filters[@]}/2))
   )
 
   select="select($(printf '(%s) and ' "${filters[@]}")) |"
@@ -423,6 +458,7 @@ applyServerFiltres() {
 }
 
 # Preview window for show server details
+# shellcheck disable=SC2317
 fzfPreview() {
   local index="$1" server_data server_ip mods_count ping_limit=1 ping_count=1
 
@@ -445,7 +481,7 @@ fzfPreview() {
   }
 
   serverPing() {
-    ping -q -c $ping_count -W $ping_limit "$1" | awk -F '/' \
+    ping -q -c "$ping_count" -W "$ping_limit" "$1" | awk -F '/' \
       'END {print ($5==""?"❔":$5 " ms")}'
   }
 
@@ -473,7 +509,10 @@ fzfPreview() {
   Public:             | \(if .shard=="public" then "🟢" else "🔴" end)
   Modded:             | \(if .mods|length > 0 then "🟢 [" +
                           (.mods|length|tostring) + "]" else "🔴" end)
-  Version:            | \(.version)"' <<< "$server_data" | gum format
+  Version:            | \(.version)
+  Platform:           | \(if .environment=="l" then
+                          "🐧 [linux]" else "🪟  [windows]"
+                        end)"' <<< "$server_data" | gum format
 
   echo
   server_ip="$(jq -er '.endpoint.ip' <<< "$server_data")"
@@ -556,7 +595,7 @@ getNotInstalledMods() {
   } | gum format
 
   # Helper for install mods without StemCMD
-  if [ ! $DAYZ_STEAMCMD_ENABLED = true ] && [ "${#missed_mods[@]}" -gt 0 ]; then
+  if [ ! "$DAYZ_STEAMCMD_ENABLED" = true ] && [ "${#missed_mods[@]}" -gt 0 ]; then
     if command -v xdg-open &>/dev/null && gum confirm --prompt.align=center \
        'Open all Steam Workshop links for missing mods for you?'
     then
@@ -861,7 +900,6 @@ connectFromArg() {
   )
   addHistoryServer "$ip" "$query_port" "$name"
   runDayZ "${exec_args[@]}"
-  exit 0
 }
 
 # Connect by IP:port
@@ -1282,7 +1320,7 @@ configMenu() {
   # Base options #1
   local config_menu_options=('Game launch options' 'Change Steam root dir')
   # Options for SteamCMD
-  if [ $DAYZ_STEAMCMD_ENABLED = true ]; then
+  if [ "$DAYZ_STEAMCMD_ENABLED" = true ]; then
     config_menu_options+=('Change Steam login' 'Disable SteamCMD')
   else
     config_menu_options+=('Set Steam login')
@@ -1296,7 +1334,7 @@ configMenu() {
       'Remove manged mods'
       'Remove all mod links'
     )
-    [ $DAYZ_STEAMCMD_ENABLED = true ] &&
+    [ "$DAYZ_STEAMCMD_ENABLED" = true ] &&
       config_menu_options+=('Force update game and all mods')
   fi
   # Base options #3
@@ -1466,7 +1504,7 @@ export dayz_path="$steam_root/common/DayZ"
 export dayz_workshop_path="$steam_root/workshop/content/$DAYZ_GAME_ID"
 
 # Get Steam profile
-if [ $DAYZ_STEAMCMD_ENABLED = true ]; then
+if [ "$DAYZ_STEAMCMD_ENABLED" = true ]; then
   steam_login="$(jq -er '.steam_login // ""' "$DAYZ_PROFILE" 2>/dev/null)"
   if [ -z "$steam_login" ]; then
     setProfileSteamLogin
@@ -1552,11 +1590,11 @@ while read -r option; do
       fi;;
     'Direct Connect')
       server_data="$(directConnect)";;
-    'Launch Game')    runDayZ "${dayz_launch_options[@]}"; exit 0;;
-    'Play Offline')   runDayZOffline "${dayz_launch_options[@]}"; exit 0;;
+    'Launch Game')    runDayZ "${dayz_launch_options[@]}";;
+    'Play Offline')   runDayZOffline "${dayz_launch_options[@]}";;
     'DayZ News')      getDayzNews "$(($(tput lines)/2-3))" | less -R; execSelf;;
     'Config')         configMenu;;
-    *)                fail "Unknown option $option"; exit 0;;
+    *)                fail "Unknown option $option";;
   esac
 done < <(
   printf '%s\n' "${main_menu_options[@]}" | \
@@ -1623,8 +1661,7 @@ while read -r option; do
         argsFromServerData "$server_data" "${dayz_launch_options[@]}"
       )
       addHistoryServer "$server_ip" "$server_query_port" "$server_name"
-      runDayZ "${exec_args[@]}"
-      exit 0;;
+      runDayZ "${exec_args[@]}";;
     *) fail "Unknown option $1";;
   esac
 done < <(printf '%s\n' "${choose_play_options[@]}" | gum choose --no-limit)
@@ -1635,6 +1672,3 @@ exit 0
 # flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam-wrapper com.valvesoftware.Steam "${@}"
 
 # TODO add some args for usage
-
-# TODO
-# https://github.com/CypherMediaGIT/DayZCommunityOfflineMode-DeerIsle-Edition

@@ -182,7 +182,7 @@ if ! command -v steamcmd &>/dev/null; then
   chmod +x "$bin_path/steamcmd"
 
   "$bin_path/steamcmd" +@ShutdownOnFailedCommand 1 +quit || steamcmd_rc=$?
-  if [ $steamcmd_rc -ne 42 ]; then
+  if [ "$steamcmd_rc" -ne 42 ]; then
     rm -r -- "$bin_path/steamcmd" "$steamcmd_path"
     fail 'There is something wrong with SteamCMD installation,' \
       'try installing it yourself:' \
