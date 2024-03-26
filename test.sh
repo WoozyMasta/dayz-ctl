@@ -2,7 +2,7 @@
 
 command -v docker &>/dev/null && cri=docker
 command -v podman &>/dev/null && cri=podman
-[ -z $cri ] && { >&2 echo 'Need Container Runtime for run tests'; exit 1; }
+[ -z "$cri" ] && { >&2 echo 'Need Container Runtime for run tests'; exit 1; }
 
 images=(
   docker.io/debian:bookworm
