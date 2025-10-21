@@ -211,8 +211,8 @@ installed_packages+=(dayz-ctl)
 if ! command -v dayz-ctl &>/dev/null; then
   printf '%s\n\t%s\n' \
     "Create a symlink for the executable file, need superuser rights" \
-    "ln -s \"$bin_path/dayz-ctl\" /usr/bin/dayz-ctl"
-  $package_su ln -s "$bin_path/dayz-ctl" /usr/bin/dayz-ctl
+    "ln -sf \"$bin_path/dayz-ctl\" /usr/bin/dayz-ctl"
+  $package_su ln -sf "$bin_path/dayz-ctl" /usr/bin/dayz-ctl
 fi
 
 # Create desktop entry
