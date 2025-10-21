@@ -1664,7 +1664,10 @@ while read -r option; do
       runDayZ "${exec_args[@]}";;
     *) fail "Unknown option $1";;
   esac
-done < <(printf '%s\n' "${choose_play_options[@]}" | gum choose --no-limit)
+done < <(
+  printf '%s\n' "${choose_play_options[@]}" | \
+    gum choose --height="$(menuHeight ${#choose_play_options[@]})"
+)
 
 exit 0
 
