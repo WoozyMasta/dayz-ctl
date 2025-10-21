@@ -223,7 +223,7 @@ getDayzNews() {
 # Save News from dayz.com
 updateDayzNews() {
   gum spin --title 'Get DayZ news...' -- \
-  curl -sSfLA "$DAYZ_USERAGENT" -m "$DAYZ_REQUEST_TIMEOUT" \
+  curl -ksSfLA "$DAYZ_USERAGENT" -m "$DAYZ_REQUEST_TIMEOUT" \
     -o "$DAYZ_NEWS_DB" "https://dayz.com/api/article?rowsPerPage=100"
 }
 
