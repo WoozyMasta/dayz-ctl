@@ -1486,22 +1486,68 @@ if ! jq -er 'has("version")' "$DAYZ_PROFILE" &>/dev/null; then
   exit 0
 fi
 
+# Find DayZ installation
+findDayZInstallation() {
+  local steam_lib_paths=()
+  local library_folders_vdf=""
+
+  # Possible locations for libraryfolders.vdf
+  local vdf_locations=(
+    "$HOME/.steam/steam/steamapps/libraryfolders.vdf"
+    "$HOME/.local/share/Steam/steamapps/libraryfolders.vdf"
+    "$HOME/.var/app/com.valvesoftware.Steam/data/Steam/steamapps/libraryfolders.vdf"
+    "$HOME/.steam/root/config/libraryfolders.vdf"
+  )
+
+  for vdf_path in "${vdf_locations[@]}"; do
+    if [ -f "$vdf_path" ]; then
+      library_folders_vdf="$vdf_path"
+      # Add the main library path, which is the parent of the 'steamapps' directory
+      steam_lib_paths+=("$(dirname "$(dirname "$library_folders_vdf")")")
+      # Add additional library paths from the vdf file
+      while IFS= read -r line; do
+          steam_lib_paths+=("$line")
+      done < <(grep -Po '"path"\s*"\K([^"]*)' "$library_folders_vdf")
+      break # Found a vdf, no need to check others
+    fi
+  done
+
+  # If VDF wasn't found, populate with default steam locations as a fallback
+  if [ ${#steam_lib_paths[@]} -eq 0 ]; then
+      steam_lib_paths+=(
+          "$HOME/.steam/steam"
+          "$HOME/.local/share/Steam"
+          "$HOME/.var/app/com.valvesoftware.Steam/data/Steam"
+      )
+  fi
+
+  # Iterate through the library paths and check for DayZ
+  for lib_path in "${steam_lib_paths[@]}"; do
+    if [ -d "$lib_path/steamapps/common/DayZ" ]; then
+      export steam_root="$lib_path/steamapps"
+      export dayz_path="$lib_path/steamapps/common/DayZ"
+      export dayz_workshop_path="$lib_path/steamapps/workshop/content/$DAYZ_GAME_ID"
+      return 0 # Success
+    fi
+  done
+
+  # If still not found, ask the user
+  local steam_root_input
+  steam_root_input="$(jq -er '.steam_root // ""' "$DAYZ_PROFILE" 2>/dev/null)"
+  steam_root=$(setProfileSteamRoot "$steam_root_input")
+  if [ -d "$steam_root/common/DayZ" ]; then
+      export dayz_path="$steam_root/common/DayZ"
+      export dayz_workshop_path="$steam_root/workshop/content/$DAYZ_GAME_ID"
+      return 0 # Success
+  fi
+
+  fail "DayZ installation not found. Please check your Steam setup."
+}
+
 checkSysctl
 
 # Set Steam, Dayz and DayZ WorkShop dir paths
-if [ -d "$HOME/.steam/steam/steamapps" ]; then
-  steam_root="$HOME/.steam/steam/steamapps"
-elif [ -d "$HOME/.local/share/Steam/steamapps" ]; then
-  steam_root="$HOME/.local/share/Steam/steamapps"
-elif [ -d "$HOME/.var/app/com.valvesoftware.Steam/data/Steam/steamapps" ]; then
-  steam_root="$HOME/.var/app/com.valvesoftware.Steam/data/Steam/steamapps"
-else
-  steam_root_input="$(jq -er '.steam_root // ""' "$DAYZ_PROFILE" 2>/dev/null)"
-  steam_root=$(setProfileSteamRoot "$steam_root_input")
-fi
-[ -d "$steam_root/common/DayZ" ] || fail "DayZ not installed or cant find it"
-export dayz_path="$steam_root/common/DayZ"
-export dayz_workshop_path="$steam_root/workshop/content/$DAYZ_GAME_ID"
+findDayZInstallation
 
 # Get Steam profile
 if [ "$DAYZ_STEAMCMD_ENABLED" = true ]; then
